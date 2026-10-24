@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from .agent import run_agent
+from .agent import DEFAULT_TEMPERATURE, run_agent
 from .graph import Graph, load_sessions, mark_quest_done, recurring_roots, totals
 from .render import render_html, save_html
 
@@ -21,9 +21,10 @@ WEB_DIR = Path(__file__).parent / "web"
 
 
 class Session:
-    def __init__(self, problem, client, model, data_dir):
+    def __init__(self, problem, client, model, data_dir, temperature=DEFAULT_TEMPERATURE):
         self.graph = Graph(problem)
         self.id = self.graph.session_id
+        self.temperature = temperature
         self.status = "thinking"  # thinking | asking | done | error
         self.question = None
         self.transcript = []  # {"role": "agent"|"you"|"note", "text": ...}
@@ -61,7 +62,7 @@ class Session:
         try:
             run_agent(
                 client, model, self.graph.problem, self._ask_user, data_dir,
-                on_event=self._on_event, graph=self.graph, notify=self._notify,
+                on_event=self._on_event, graph=self.graph, notify=self._notify, temperature=self.temperature,
             )
             self.graph.save(data_dir)
             self.html_path = save_html(self.graph, data_dir)
@@ -84,6 +85,7 @@ class Session:
         return {
             "id": self.id,
             "status": self.status,
+            "temperature": self.temperature,
             "question": self.question,
             "transcript": self.transcript,
             "events": self.events[-30:],
@@ -93,14 +95,16 @@ class Session:
 
 
 class App:
-    def __init__(self, client, model, data_dir):
+    def __init__(self, client, model, data_dir, temperature=DEFAULT_TEMPERATURE):
         self.client = client
         self.model = model
         self.data_dir = data_dir
+        self.temperature = temperature
         self.sessions = {}
 
-    def start(self, problem):
-        session = Session(problem, self.client, self.model, self.data_dir)
+    def start(self, problem, temperature=None):
+        temperature = self.temperature if temperature is None else max(0.0, min(2.0, float(temperature)))
+        session = Session(problem, self.client, self.model, self.data_dir, temperature=temperature)
         self.sessions[session.id] = session
         return session
 
@@ -138,7 +142,8 @@ def make_handler(app):
                 past = [{"id": s["session_id"], "problem": s["problem"], "next_move": s.get("next_move", ""),
                          "points": s.get("score", {}).get("points", 0), "done": bool(s.get("completed_at"))}
                         for s in load_sessions(app.data_dir)]
-                return self._send(HTTPStatus.OK, {"sessions": past[::-1], "roots": recurring_roots(app.data_dir), "totals": totals(app.data_dir)})
+                return self._send(HTTPStatus.OK, {"sessions": past[::-1], "roots": recurring_roots(app.data_dir), "totals": totals(app.data_dir),
+                                                  "model": app.model, "temperature": app.temperature})
             if url.path.startswith("/session/"):
                 session_id = url.path[len("/session/"):].removesuffix(".html")
                 live = app.sessions.get(session_id)
@@ -156,8 +161,11 @@ def make_handler(app):
                 problem = (body.get("problem") or "").strip()
                 if not problem:
                     return self._send(HTTPStatus.BAD_REQUEST, {"error": "problem is empty"})
-                session = app.start(problem)
-                return self._send(HTTPStatus.OK, {"session": session.id})
+                try:
+                    session = app.start(problem, body.get("temperature"))
+                except (TypeError, ValueError):
+                    return self._send(HTTPStatus.BAD_REQUEST, {"error": "temperature must be a number between 0 and 2"})
+                return self._send(HTTPStatus.OK, {"session": session.id, "temperature": session.temperature})
             if url.path == "/api/answer":
                 session = app.sessions.get(body.get("session", ""))
                 if not session:
@@ -181,10 +189,10 @@ def make_handler(app):
     return Handler
 
 
-def serve(client, model, data_dir, host="127.0.0.1", port=8000):
-    app = App(client, model, data_dir)
+def serve(client, model, data_dir, host="127.0.0.1", port=8000, temperature=DEFAULT_TEMPERATURE):
+    app = App(client, model, data_dir, temperature=temperature)
     server = ThreadingHTTPServer((host, port), make_handler(app))
-    print(f"LifeGraph running at http://{host}:{port}  (model: {model}, sessions saved in {data_dir}/sessions)")
+    print(f"LifeGraph running at http://{host}:{port}  (model: {model}, temperature: {temperature}, sessions saved in {data_dir}/sessions)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -166,6 +166,7 @@ class AgentLoopTests(unittest.TestCase):
         graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), data_dir, session_id="job")
         self.assertTrue(graph.finished)
         self.assertEqual(client.script, [])
+        self.assertEqual(client.last_temperature, 0.3)  # the default reaches the model
         self.assertEqual(graph.levers(), ["n3"])
         self.assertIn("two hours", graph.next_move)
         self.assertEqual([o["text"][:4] for o in graph.options()], ["Stay", "Ask ", "Test"])
@@ -203,8 +204,9 @@ class AgentLoopTests(unittest.TestCase):
             return original(**kw)
 
         client.chat.completions.create = create
-        graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp())
+        graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp(), temperature=1.1)
         self.assertTrue(graph.finished)
+        self.assertEqual(client.last_temperature, 1.1)
 
 
 class HistoryTests(unittest.TestCase):

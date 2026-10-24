@@ -115,6 +115,15 @@ Which Gemma 4 to pull:
 
 If the agent loops on errors or writes prose instead of calling tools, move one row down the table. Keep Ollama current: early 0.20.x builds had a broken tool parser for Gemma 4. Add `--verbose` to watch every tool call.
 
+**Temperature.** Default `0.3`, which keeps tool calls well-formed. Raise it for more varied questions and paths, lower it if a small model starts producing broken tool calls:
+
+```bash
+python -m lifegraph serve --temperature 0.8          # server default
+LIFEGRAPH_TEMPERATURE=0.8 python -m lifegraph ask "..."
+```
+
+The landing page has a slider that sets it per session, remembered in your browser. Values are clamped to 0 to 2.
+
 ## Or hosted Gemma 4 on the Gemini API
 
 ```bash

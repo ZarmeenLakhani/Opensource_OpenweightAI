@@ -54,8 +54,9 @@ class ServerTests(unittest.TestCase):
         self.assertIn("text/html", ctype)
         self.assertIn(b"Explore my decision graph", page)
 
-        status, j = self._post("/api/start", {"problem": JOB_PROBLEM})
+        status, j = self._post("/api/start", {"problem": JOB_PROBLEM, "temperature": 0.9})
         self.assertEqual(status, 200)
+        self.assertEqual(j["temperature"], 0.9)
         sid = j["session"]
 
         for answer in JOB_ANSWERS:
@@ -66,6 +67,8 @@ class ServerTests(unittest.TestCase):
 
         state = self._wait(sid, "done")
         self.assertEqual(state["status"], "done", state["error"])
+        self.assertEqual(state["temperature"], 0.9)
+        self.assertEqual(self.app.client.last_temperature, 0.9)  # the per-session value reached the model
         self.assertIn("two hours", state["graph"]["next_move"])
         self.assertEqual(len([m for m in state["transcript"] if m["role"] == "you"]), len(JOB_ANSWERS))
         self.assertTrue(any(e.get("name") == "finish" for e in state["events"]))
@@ -92,6 +95,10 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status, 404)
         status, j = self._post("/api/start", {"problem": "  "})
         self.assertEqual(status, 400)
+        status, j = self._post("/api/start", {"problem": "x", "temperature": "hot"})
+        self.assertEqual(status, 400)
+        status, j = self._post("/api/start", {"problem": "x", "temperature": 7})
+        self.assertEqual(j["temperature"], 2.0)  # clamped
 
     def test_user_command_mid_session(self):
         _, j = self._post("/api/start", {"problem": JOB_PROBLEM})

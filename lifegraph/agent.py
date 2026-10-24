@@ -9,7 +9,11 @@ from .tools import TOOLS, ToolRunner, parse_args
 MAX_STEPS = 60
 
 
-def run_agent(client, model, problem, ask_user, data_dir, on_event=None, session_id=None, graph=None, notify=print):
+DEFAULT_TEMPERATURE = 0.3  # low keeps tool calls well-formed; raise it for more varied questions and paths
+
+
+def run_agent(client, model, problem, ask_user, data_dir, on_event=None, session_id=None, graph=None, notify=print,
+              temperature=DEFAULT_TEMPERATURE):
     """Drive one session.
 
     client: anything with chat.completions.create (OpenAI SDK pointed at Ollama, vLLM, Groq, ...).
@@ -17,6 +21,7 @@ def run_agent(client, model, problem, ask_user, data_dir, on_event=None, session
     on_event: optional callable(kind, payload) for logging tool calls.
     graph: optional pre-built Graph, so a caller (the web server) can watch it while the loop runs.
     notify: callable(text) that shows the person the result of a /command.
+    temperature: sampling temperature passed to the model on every turn.
     """
     graph = graph or Graph(problem, session_id=session_id)
     runner = ToolRunner(graph, ask_user, data_dir, notify=notify)
@@ -29,7 +34,7 @@ def run_agent(client, model, problem, ask_user, data_dir, on_event=None, session
 
     for _ in range(MAX_STEPS):
         response = client.chat.completions.create(
-            model=model, messages=messages, tools=TOOLS, tool_choice="auto", temperature=0.3
+            model=model, messages=messages, tools=TOOLS, tool_choice="auto", temperature=temperature
         )
         choice = response.choices[0].message
         calls = choice.tool_calls or []

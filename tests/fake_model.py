@@ -15,6 +15,7 @@ class FakeClient:
 
     def _create(self, model, messages, tools, tool_choice, temperature):
         self.seen_messages = list(messages)
+        self.last_temperature = temperature
         if not self.script:
             raise AssertionError("script exhausted; the agent kept asking for more turns")
         name, args = self.script.pop(0)
