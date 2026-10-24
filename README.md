@@ -131,10 +131,13 @@ lifegraph/
   graph.py     Graph: nodes, regions, boundary edges, levers, history search, recurring roots
   prompts.py   system prompt
   render.py    HTML page: next move, graph, three regions
-  cli.py       landing screen, `ask` and `roots`
+  server.py    local web server: sessions in threads, JSON API
+  web/index.html  the page: landing, chat, live map
+  cli.py       `serve`, `ask` (terminal) and `roots`
 tests/
   fake_model.py  scripted model for tests and demos
   test_agent.py
+  test_server.py drives a full session over HTTP
 ```
 
 ## Not therapy

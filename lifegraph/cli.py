@@ -77,6 +77,15 @@ def main(argv=None):
         help="use Gemma 4 on Google's Gemini API (hosted) instead of local Ollama; needs GEMINI_API_KEY",
     )
 
+    serve = sub.add_parser("serve", help="run the web UI at http://localhost:8000")
+    serve.add_argument("--port", type=int, default=int(os.environ.get("LIFEGRAPH_PORT", "8000")))
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--model", default=os.environ.get("LIFEGRAPH_MODEL", LOCAL_DEFAULT_MODEL))
+    serve.add_argument("--base-url", default=os.environ.get("LIFEGRAPH_BASE_URL", "http://localhost:11434/v1"))
+    serve.add_argument("--api-key", default=os.environ.get("LIFEGRAPH_API_KEY", "ollama"))
+    serve.add_argument("--data-dir", default=os.environ.get("LIFEGRAPH_DATA", "data"))
+    serve.add_argument("--gemini", action="store_true", help="use Gemma 4 on Google's Gemini API; needs GEMINI_API_KEY")
+
     roots = sub.add_parser("roots", help="explore your decision graph: causes under more than one problem")
     roots.add_argument("--data-dir", default=os.environ.get("LIFEGRAPH_DATA", "data"))
 
@@ -100,6 +109,12 @@ def main(argv=None):
             sys.exit("--gemini needs GEMINI_API_KEY in the environment (get one at https://aistudio.google.com)")
         if "LIFEGRAPH_MODEL" not in os.environ and args.model == LOCAL_DEFAULT_MODEL:
             args.model = GEMINI_DEFAULT_MODEL
+
+    if args.cmd == "serve":
+        from .server import serve as run_server
+
+        run_server(_client(args.base_url, args.api_key), args.model, args.data_dir, host=args.host, port=args.port)
+        return 0
 
     problem = args.problem or _landing()
     print(f"\n({USER_COMMANDS.splitlines()[0]} type /help to see how.)")

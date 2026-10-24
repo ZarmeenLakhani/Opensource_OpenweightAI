@@ -9,15 +9,17 @@ from .tools import TOOLS, ToolRunner, parse_args
 MAX_STEPS = 60
 
 
-def run_agent(client, model, problem, ask_user, data_dir, on_event=None, session_id=None):
-    """Drive one 5 Whys session.
+def run_agent(client, model, problem, ask_user, data_dir, on_event=None, session_id=None, graph=None, notify=print):
+    """Drive one session.
 
     client: anything with chat.completions.create (OpenAI SDK pointed at Ollama, vLLM, Groq, ...).
     ask_user: callable(question) -> answer string.
     on_event: optional callable(kind, payload) for logging tool calls.
+    graph: optional pre-built Graph, so a caller (the web server) can watch it while the loop runs.
+    notify: callable(text) that shows the person the result of a /command.
     """
-    graph = Graph(problem, session_id=session_id)
-    runner = ToolRunner(graph, ask_user, data_dir)
+    graph = graph or Graph(problem, session_id=session_id)
+    runner = ToolRunner(graph, ask_user, data_dir, notify=notify)
     emit = on_event or (lambda kind, payload: None)
 
     messages = [
