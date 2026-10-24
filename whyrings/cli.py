@@ -8,6 +8,10 @@ from .agent import run_agent
 from .graph import recurring_roots
 from .render import save_html
 
+# Gemma 4 hosted on Google's Gemini API, through its OpenAI-compatible endpoint.
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+GEMINI_DEFAULT_MODEL = "gemma-4-26b-a4b-it"
+
 
 def _client(base_url, api_key):
     try:
@@ -40,11 +44,16 @@ def main(argv=None):
 
     ask = sub.add_parser("ask", help="start a 5 Whys session")
     ask.add_argument("problem", nargs="?", help="the thing that keeps happening")
-    ask.add_argument("--model", default=os.environ.get("WHYRINGS_MODEL", "qwen2.5:7b"))
+    ask.add_argument("--model", default=os.environ.get("WHYRINGS_MODEL", "gemma4:e4b"))
     ask.add_argument("--base-url", default=os.environ.get("WHYRINGS_BASE_URL", "http://localhost:11434/v1"))
     ask.add_argument("--api-key", default=os.environ.get("WHYRINGS_API_KEY", "ollama"))
     ask.add_argument("--data-dir", default=os.environ.get("WHYRINGS_DATA", "data"))
     ask.add_argument("--verbose", action="store_true", help="print every tool call")
+    ask.add_argument(
+        "--gemini",
+        action="store_true",
+        help="use Gemma 4 on Google's Gemini API (hosted) instead of local Ollama; needs GEMINI_API_KEY",
+    )
 
     roots = sub.add_parser("roots", help="causes that show up under more than one problem")
     roots.add_argument("--data-dir", default=os.environ.get("WHYRINGS_DATA", "data"))
@@ -61,6 +70,14 @@ def main(argv=None):
             for p in g["problems"]:
                 print(f"    - {p}")
         return 0
+
+    if args.gemini:
+        args.base_url = GEMINI_BASE_URL
+        args.api_key = os.environ.get("GEMINI_API_KEY", "")
+        if not args.api_key:
+            sys.exit("--gemini needs GEMINI_API_KEY in the environment (get one at https://aistudio.google.com)")
+        if "WHYRINGS_MODEL" not in os.environ and args.model == "gemma4:e4b":
+            args.model = GEMINI_DEFAULT_MODEL
 
     problem = args.problem or input("What keeps happening? ").strip()
     if not problem:

@@ -2,7 +2,7 @@
 
 An agent that asks you "why" until it finds the real causes of a recurring problem, then lands every cause in one of three rings: **control**, **influence**, **outside**. Over many sessions your problems become one decision graph, and the causes that keep showing up in your control ring are your highest-leverage habits.
 
-Runs on any open-weight model behind an OpenAI-compatible endpoint (Ollama, vLLM, llama.cpp, Groq). Your life graph stays on your machine as plain JSON.
+Built for **Gemma 4** running locally through Ollama. Any open-weight model behind an OpenAI-compatible endpoint works (vLLM, llama.cpp, Groq), but Gemma 4 is the default and the one it is tuned against. Your life graph stays on your machine as plain JSON.
 
 Built for the agent track of the Open Source / Open Weight AI hackathon.
 
@@ -38,16 +38,38 @@ The loop (`whyrings/agent.py`) is about 50 lines: model picks a tool, Python run
 
 ```bash
 pip install -r requirements.txt            # only dependency: openai SDK, used as a generic client
-ollama pull qwen2.5:7b                      # any tool-calling open-weight model works
+ollama pull gemma4:e4b                      # default model, fits in 8GB of RAM
 python -m whyrings ask "I keep skipping the gym"
 ```
 
+Which Gemma 4 to pull:
+
+| Tag | Good for | Notes |
+|---|---|---|
+| `gemma4:e2b` | laptops with little RAM | fastest; can stumble on multi-step tool use |
+| `gemma4:e4b` | most laptops (default) | tool calling, plus native audio input |
+| `gemma4:26b` | 16GB+ machines | MoE, only 4B active so it is fast; best tool-calling reliability |
+| `gemma4:31b` | a desktop GPU | dense, strongest answers |
+
+If the agent loops on errors or writes prose instead of calling tools, move one row down the table. Keep Ollama current: early 0.20.x builds had a broken tool parser for Gemma 4.
+
 Each session writes `data/sessions/<id>.json` and `data/sessions/<id>.html` (three rings, red edges at the boundary, red outlines on levers, your actions on the right).
+
+No GPU, or want to try it before pulling weights? Gemma 4 is also hosted on Google's Gemini API with a free tier:
+
+```bash
+export GEMINI_API_KEY=...                   # from https://aistudio.google.com
+python -m whyrings ask --gemini "I keep skipping the gym"          # gemma-4-26b-a4b-it
+python -m whyrings ask --gemini --model gemma-4-31b-it "..."
+```
+
+Same open weights, same agent, just not on your machine. The local Ollama path is the one that keeps your graph private.
 
 Other endpoints:
 
 ```bash
-python -m whyrings ask --base-url http://localhost:8000/v1 --model meta-llama/Llama-3.1-8B-Instruct "..."
+python -m whyrings ask --model gemma4:26b "..."
+python -m whyrings ask --base-url http://localhost:8000/v1 --model google/gemma-4-26b-a4b-it "..."   # vLLM
 WHYRINGS_BASE_URL=https://api.groq.com/openai/v1 WHYRINGS_API_KEY=... WHYRINGS_MODEL=llama-3.3-70b-versatile python -m whyrings ask "..."
 ```
 
