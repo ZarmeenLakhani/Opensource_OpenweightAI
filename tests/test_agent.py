@@ -107,6 +107,11 @@ class ToolRunnerTests(unittest.TestCase):
         self.assertIn("n1", r.run("finish", {**base, "next_move": "do x", "actions": {}})["error"])
         self.assertIn("what_if", r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["error"])
         r.run("ask", {"node_id": "n0", "kind": "what_if", "question": "what if?"})
+        self.assertIn("two paths", r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["error"])
+        g.add_option("n0", "stay", "control")
+        g.add_option("n0", "leave", "control")
+        with self.assertRaises(ValueError):
+            g.add_option("n0", "fate", "outside")
         bad_accept = {**base, "next_move": "do x", "actions": {"n1": "do"}, "accept": {"n1": "let go"}}
         self.assertIn("outside", r.run("finish", bad_accept)["error"])
         self.assertTrue(r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["ok"])
@@ -161,12 +166,20 @@ class AgentLoopTests(unittest.TestCase):
         graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), data_dir, session_id="job")
         self.assertTrue(graph.finished)
         self.assertEqual(client.script, [])
+        self.assertEqual(client.last_temperature, 0.3)  # the default reaches the model
         self.assertEqual(graph.levers(), ["n3"])
         self.assertIn("two hours", graph.next_move)
+        self.assertEqual([o["text"][:4] for o in graph.options()], ["Stay", "Ask ", "Test"])
         by_ring = graph.by_ring(kind="action")
         self.assertEqual([n["text"] for n in by_ring["control"]], ["Build a prototype", "Test customer demand", "Set a savings target"])
-        self.assertEqual({n["text"] for n in by_ring["influence"]}, {"Negotiate ownership of one project", "Find a cofounder"})
+        self.assertEqual([n["text"] for n in by_ring["influence"]], ["Negotiate ownership of one project"])
         self.assertEqual(by_ring["outside"], [])
+        # consequences hang under the path they were asked about
+        self.assertEqual([c["kind"] for c in graph.children("n7")], ["consequence", "action", "action", "action", "consequence"])
+        score = graph.score()
+        self.assertEqual((score["causes"], score["levers"], score["paths"], score["what_ifs"]), (4, 1, 3, 4))
+        self.assertEqual(score["points"], 4 * 10 + 25 + 3 * 15 + 4 * 20 + 50)
+        self.assertEqual(score["depth"], 4)
         self.assertTrue(any(m["role"] == "tool" for m in client.seen_messages))
 
         saved = json.loads(graph.save(data_dir).read_text())
@@ -174,9 +187,9 @@ class AgentLoopTests(unittest.TestCase):
 
         page = save_html(graph, data_dir).read_text()
         self.assertIn("Your next move", page)
-        self.assertIn("Outside my control", page)
         self.assertIn("leaves your reach", page)
-        self.assertIn("moves if:", page)
+        self.assertIn("LifeGraphTree.render", page)  # the tree renderer is inlined, so the file stands alone
+        self.assertIn('"levers": ["n3"]', page)  # the graph JSON is embedded for it
 
     def test_prose_reply_is_pushed_back_to_tools(self):
         client = FakeClient(JOB_SCRIPT)
@@ -191,8 +204,9 @@ class AgentLoopTests(unittest.TestCase):
             return original(**kw)
 
         client.chat.completions.create = create
-        graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp())
+        graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp(), temperature=1.1)
         self.assertTrue(graph.finished)
+        self.assertEqual(client.last_temperature, 1.1)
 
 
 class HistoryTests(unittest.TestCase):

@@ -86,8 +86,25 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "add_option",
+            "description": "Record a path the person could take (stay, change within, leave), under n0. control or influence only.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "parent_id": {"type": "string"},
+                    "text": {"type": "string", "description": "The path, phrased concretely for this person."},
+                    "ring": {"type": "string", "enum": ["control", "influence"]},
+                    "reason": {"type": "string"},
+                },
+                "required": ["parent_id", "text", "ring", "reason"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "add_consequence",
-            "description": "Record what the person said a what-if path would lead to, under the node the what-if was about.",
+            "description": "Record what the person said a path or what-if would lead to, under the option or node the question was about.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -268,6 +285,9 @@ class ToolRunner:
     def _add_action(self, parent_id, text, ring, reason=""):
         return {"ok": True, "node": self.graph.add_action(parent_id, text, ring, reason)}
 
+    def _add_option(self, parent_id, text, ring, reason=""):
+        return {"ok": True, "node": self.graph.add_option(parent_id, text, ring, reason)}
+
     def _add_consequence(self, parent_id, text, ring, reason=""):
         return {"ok": True, "node": self.graph.add_consequence(parent_id, text, ring, reason)}
 
@@ -286,6 +306,8 @@ class ToolRunner:
             return {"error": f"actions is missing these lever nodes: {missing}"}
         if self.what_ifs_asked == 0 and self.questions_asked < MAX_QUESTIONS:
             return {"error": "ask at least one what_if before finishing"}
+        if len(self.graph.options()) < 2 and self.questions_asked < MAX_QUESTIONS:
+            return {"error": "lay out at least two paths with add_option before finishing"}
         not_outside = [k for k in accept if k in self.graph.nodes and self.graph.nodes[k]["ring"] != "outside"]
         if not_outside:
             return {"error": f"accept is only for outside nodes; these are not: {not_outside}"}

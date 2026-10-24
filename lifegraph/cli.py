@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 
-from .agent import run_agent
+from .agent import DEFAULT_TEMPERATURE, run_agent
 from .graph import recurring_roots
 from .render import save_html
 from .tools import USER_COMMANDS
@@ -70,12 +70,25 @@ def main(argv=None):
     ask.add_argument("--base-url", default=os.environ.get("LIFEGRAPH_BASE_URL", "http://localhost:11434/v1"))
     ask.add_argument("--api-key", default=os.environ.get("LIFEGRAPH_API_KEY", "ollama"))
     ask.add_argument("--data-dir", default=os.environ.get("LIFEGRAPH_DATA", "data"))
+    ask.add_argument("--temperature", type=float, default=float(os.environ.get("LIFEGRAPH_TEMPERATURE", DEFAULT_TEMPERATURE)),
+                     help=f"sampling temperature, 0 to 2 (default {DEFAULT_TEMPERATURE}); higher is more varied, lower is more reliable tool calls")
     ask.add_argument("--verbose", action="store_true", help="print every tool call")
     ask.add_argument(
         "--gemini",
         action="store_true",
         help="use Gemma 4 on Google's Gemini API (hosted) instead of local Ollama; needs GEMINI_API_KEY",
     )
+
+    serve = sub.add_parser("serve", help="run the web UI at http://localhost:8000")
+    serve.add_argument("--port", type=int, default=int(os.environ.get("LIFEGRAPH_PORT", "8000")))
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--model", default=os.environ.get("LIFEGRAPH_MODEL", LOCAL_DEFAULT_MODEL))
+    serve.add_argument("--base-url", default=os.environ.get("LIFEGRAPH_BASE_URL", "http://localhost:11434/v1"))
+    serve.add_argument("--api-key", default=os.environ.get("LIFEGRAPH_API_KEY", "ollama"))
+    serve.add_argument("--data-dir", default=os.environ.get("LIFEGRAPH_DATA", "data"))
+    serve.add_argument("--temperature", type=float, default=float(os.environ.get("LIFEGRAPH_TEMPERATURE", DEFAULT_TEMPERATURE)),
+                     help="default sampling temperature for sessions; the landing page can override it per session")
+    serve.add_argument("--gemini", action="store_true", help="use Gemma 4 on Google's Gemini API; needs GEMINI_API_KEY")
 
     roots = sub.add_parser("roots", help="explore your decision graph: causes under more than one problem")
     roots.add_argument("--data-dir", default=os.environ.get("LIFEGRAPH_DATA", "data"))
@@ -101,6 +114,13 @@ def main(argv=None):
         if "LIFEGRAPH_MODEL" not in os.environ and args.model == LOCAL_DEFAULT_MODEL:
             args.model = GEMINI_DEFAULT_MODEL
 
+    if args.cmd == "serve":
+        from .server import serve as run_server
+
+        run_server(_client(args.base_url, args.api_key), args.model, args.data_dir, host=args.host, port=args.port,
+                   temperature=args.temperature)
+        return 0
+
     problem = args.problem or _landing()
     print(f"\n({USER_COMMANDS.splitlines()[0]} type /help to see how.)")
 
@@ -113,7 +133,7 @@ def main(argv=None):
             print(f"  [{kind}] {payload}")
 
     client = _client(args.base_url, args.api_key)
-    graph = run_agent(client, args.model, problem, ask_user, args.data_dir, on_event=on_event)
+    graph = run_agent(client, args.model, problem, ask_user, args.data_dir, on_event=on_event, temperature=args.temperature)
     _print_graph(graph)
     json_path = graph.save(args.data_dir)
     html_path = save_html(graph, args.data_dir)

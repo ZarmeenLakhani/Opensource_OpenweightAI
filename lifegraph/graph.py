@@ -7,7 +7,9 @@ from pathlib import Path
 
 # Not nested: three distinct regions a node can sit in.
 RINGS = ("control", "influence", "outside")
-KINDS = ("problem", "cause", "action", "consequence")
+# problem: the root. cause: why. option: a path the person could take (stay, change within, leave).
+# consequence: what a path or what-if would lead to. action: a concrete thing the person could do.
+KINDS = ("problem", "cause", "option", "action", "consequence")
 
 
 class Graph:
@@ -21,6 +23,7 @@ class Graph:
         self.actions = {}  # node_id -> concrete action for that node (levers, usually)
         self.accept = {}  # node_id -> what to let go of and where to refocus
         self.user_edits = []  # log of map changes the person made
+        self.completed_at = None  # set when the person marks the next move as done
         self.finished = False
         self.add_node(None, problem, kind="problem")
 
@@ -56,8 +59,34 @@ class Graph:
             raise ValueError("an action is something the person can do; it cannot sit in 'outside'")
         return self.add_node(parent_id, text, "action", ring, reason, actionable=True)
 
+    def add_option(self, parent_id, text, ring, reason=""):
+        if ring == "outside":
+            raise ValueError("an option is a path the person could choose; it cannot sit in 'outside'")
+        return self.add_node(parent_id, text, "option", ring, reason)
+
     def add_consequence(self, parent_id, text, ring, reason=""):
         return self.add_node(parent_id, text, "consequence", ring, reason)
+
+    def options(self):
+        return [n for n in self.nodes.values() if n["kind"] == "option"]
+
+    def score(self):
+        """The game layer: points for digging, finding levers, laying out paths, exploring what-ifs, and a next move."""
+        kinds = [n["kind"] for n in self.nodes.values()]
+        causes, paths, what_ifs = kinds.count("cause"), kinds.count("option"), kinds.count("consequence")
+        levers = len(self.levers())
+        placed = [n for n in self.nodes.values() if n["ring"]]
+        reach = sum(1 for n in placed if n["ring"] in ("control", "influence"))
+        points = causes * 10 + levers * 25 + paths * 15 + what_ifs * 20 + (50 if self.next_move else 0) + (100 if self.completed_at else 0)
+        return {
+            "points": points,
+            "causes": causes,
+            "levers": levers,
+            "paths": paths,
+            "what_ifs": what_ifs,
+            "clarity": round(reach / len(placed), 2) if placed else 0,  # share of the map within reach
+            "depth": max((n["depth"] for n in self.nodes.values() if n["kind"] == "cause"), default=0),
+        }
 
     def set_ring(self, node_id, ring, reason="", shifts_when=""):
         if ring not in RINGS:
@@ -130,7 +159,7 @@ class Graph:
         lines = []
         for node_id in self.dfs_order():
             n = self.nodes[node_id]
-            glyph = {"problem": "!", "cause": "?", "action": ">", "consequence": "~"}[n["kind"]]
+            glyph = {"problem": "!", "cause": "?", "option": "|", "action": ">", "consequence": "~"}[n["kind"]]
             mark = "  <- lever" if node_id in levers else ""
             shift = f"  (moves if: {n['shifts_when']})" if n["shifts_when"] else ""
             lines.append(f"{'  ' * n['depth']}{glyph} {node_id} [{n['ring'] or '?'}] {n['text']}{shift}{mark}")
@@ -148,6 +177,8 @@ class Graph:
             "actions": self.actions,
             "accept": self.accept,
             "user_edits": self.user_edits,
+            "completed_at": self.completed_at,
+            "score": self.score(),
         }
 
     def save(self, data_dir):
@@ -167,6 +198,31 @@ def load_sessions(data_dir):
     if not folder.exists():
         return []
     return [json.loads(p.read_text()) for p in sorted(folder.glob("*.json"))]
+
+
+def mark_quest_done(data_dir, session_id):
+    """Record that the person did their next move. Returns the updated session dict, or None."""
+    path = Path(data_dir) / "sessions" / f"{session_id}.json"
+    if not path.exists():
+        return None
+    session = json.loads(path.read_text())
+    if not session.get("completed_at"):
+        session["completed_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        session.setdefault("score", {})
+        session["score"]["points"] = session["score"].get("points", 0) + 100
+    path.write_text(json.dumps(session, indent=2))
+    return session
+
+
+def totals(data_dir):
+    """Lifetime game totals across saved sessions."""
+    sessions = load_sessions(data_dir)
+    return {
+        "sessions": len(sessions),
+        "points": sum(s.get("score", {}).get("points", 0) for s in sessions),
+        "quests_done": sum(1 for s in sessions if s.get("completed_at")),
+        "levers": sum(len(s.get("levers", [])) for s in sessions),
+    }
 
 
 def search_history(data_dir, text, exclude_session=None, limit=5):
