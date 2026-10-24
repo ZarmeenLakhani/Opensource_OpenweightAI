@@ -1,5 +1,7 @@
 # LifeGraph
 
+[![tests](https://github.com/ZarmeenLakhani/Opensource_OpenweightAI/actions/workflows/tests.yml/badge.svg)](https://github.com/ZarmeenLakhani/Opensource_OpenweightAI/actions/workflows/tests.yml)
+
 Start with what's weighing on you. An agent probes it adaptively (why, what would make this feel safe, what if you tried X), builds a living decision graph of causes, possible actions and consequences, and lands every piece in one of three regions: **control**, **influence**, **outside my control**. It ends with one small next move, not a speech. Over many sessions, the causes that keep showing up under different problems become your decision graph.
 
 Built on **Gemma 4**, running locally through Ollama, or hosted on Google's Gemini API. Apache 2.0 weights, your graph stays as plain JSON on your machine.
