@@ -1,12 +1,13 @@
-"""The decision graph: nodes are causes, edges are "because" links."""
+"""The decision graph: nodes are causes, actions or consequences; edges are "because" / "could do" / "would lead to" links."""
 
 import json
 import re
 import time
 from pathlib import Path
 
-# Inner to outer, following Covey's circles.
+# Not nested: three distinct regions a node can sit in.
 RINGS = ("control", "influence", "outside")
+KINDS = ("problem", "cause", "action", "consequence")
 
 
 class Graph:
@@ -14,37 +15,77 @@ class Graph:
         self.session_id = session_id or time.strftime("%Y%m%d-%H%M%S")
         self.problem = problem
         self.nodes = {}
+        self._next = 0
         self.summary = ""
-        self.actions = {}  # node_id -> concrete next action
-        self.accept = {}  # node_id -> what to accept and where to redirect energy
+        self.next_move = ""  # the one smallest useful action
+        self.actions = {}  # node_id -> concrete action for that node (levers, usually)
+        self.accept = {}  # node_id -> what to let go of and where to refocus
+        self.user_edits = []  # log of map changes the person made
         self.finished = False
-        self._add("n0", problem, parent_id=None, depth=0)
+        self.add_node(None, problem, kind="problem")
 
-    def _add(self, node_id, text, parent_id, depth):
+    def add_node(self, parent_id, text, kind, ring=None, reason="", actionable=False, shifts_when=""):
+        if kind not in KINDS:
+            raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
+        if parent_id is not None and parent_id not in self.nodes:
+            raise KeyError(parent_id)
+        node_id = f"n{self._next}"
+        self._next += 1
+        depth = 0 if parent_id is None else self.nodes[parent_id]["depth"] + 1
         self.nodes[node_id] = {
             "id": node_id,
             "text": text.strip(),
+            "kind": kind,
             "parent_id": parent_id,
             "depth": depth,
             "ring": None,
             "ring_reason": "",
-            "actionable": False,
+            "shifts_when": "",  # condition under which this would move to another ring
+            "actionable": bool(actionable),
             "same_as": None,  # "session_id:node_id" of a matching node from a past session
         }
+        if ring is not None:
+            self.set_ring(node_id, ring, reason, shifts_when)
         return self.nodes[node_id]
 
-    def add_cause(self, parent_id, text, ring, reason="", actionable=False):
-        parent = self.nodes[parent_id]
-        node = self._add(f"n{len(self.nodes)}", text, parent_id, parent["depth"] + 1)
-        self.set_ring(node["id"], ring, reason)
-        node["actionable"] = bool(actionable)
-        return node
+    def add_cause(self, parent_id, text, ring, reason="", actionable=False, shifts_when=""):
+        return self.add_node(parent_id, text, "cause", ring, reason, actionable, shifts_when)
 
-    def set_ring(self, node_id, ring, reason=""):
+    def add_action(self, parent_id, text, ring, reason=""):
+        if ring == "outside":
+            raise ValueError("an action is something the person can do; it cannot sit in 'outside'")
+        return self.add_node(parent_id, text, "action", ring, reason, actionable=True)
+
+    def add_consequence(self, parent_id, text, ring, reason=""):
+        return self.add_node(parent_id, text, "consequence", ring, reason)
+
+    def set_ring(self, node_id, ring, reason="", shifts_when=""):
         if ring not in RINGS:
             raise ValueError(f"ring must be one of {RINGS}, got {ring!r}")
-        self.nodes[node_id]["ring"] = ring
-        self.nodes[node_id]["ring_reason"] = reason
+        node = self.nodes[node_id]
+        node["ring"] = ring
+        if reason:
+            node["ring_reason"] = reason
+        if shifts_when:
+            node["shifts_when"] = shifts_when
+
+    def rename(self, node_id, text):
+        self.nodes[node_id]["text"] = text.strip()
+
+    def delete_branch(self, node_id):
+        if node_id == "n0":
+            raise ValueError("cannot delete the problem itself")
+        removed = []
+        stack = [node_id]
+        while stack:
+            current = stack.pop()
+            stack.extend(c["id"] for c in self.children(current))
+            removed.append(current)
+            del self.nodes[current]
+        for store in (self.actions, self.accept):
+            for rid in removed:
+                store.pop(rid, None)
+        return removed
 
     def children(self, node_id):
         return [n for n in self.nodes.values() if n["parent_id"] == node_id]
@@ -53,9 +94,11 @@ class Graph:
         return [n["id"] for n in self.nodes.values() if n["ring"] is None]
 
     def boundary_edges(self):
-        """Edges where a "why" chain leaves your reach: a control or influence node caused by an outside node."""
+        """Edges where a cause chain leaves the person's reach: a reachable node explained by an outside one."""
         edges = []
         for node in self.nodes.values():
+            if node["kind"] != "cause":
+                continue
             parent = self.nodes.get(node["parent_id"]) if node["parent_id"] else None
             if parent and parent["ring"] in ("control", "influence") and node["ring"] == "outside":
                 edges.append((parent["id"], node["id"]))
@@ -65,6 +108,14 @@ class Graph:
         """The last reachable node before each boundary crossing: usually the best place to act."""
         return sorted({parent for parent, _ in self.boundary_edges()}, key=lambda i: int(i[1:]))
 
+    def by_ring(self, kind=None):
+        out = {ring: [] for ring in RINGS}
+        for node_id in self.dfs_order():
+            node = self.nodes[node_id]
+            if node["ring"] and (kind is None or node["kind"] == kind):
+                out[node["ring"]].append(node)
+        return out
+
     def dfs_order(self):
         order, stack = [], ["n0"]
         while stack:
@@ -72,6 +123,18 @@ class Graph:
             order.append(node_id)
             stack.extend(reversed([c["id"] for c in self.children(node_id)]))
         return order
+
+    def outline(self):
+        """Plain-text tree, used by the CLI and sent to the model after the person edits the map."""
+        levers = set(self.levers())
+        lines = []
+        for node_id in self.dfs_order():
+            n = self.nodes[node_id]
+            glyph = {"problem": "!", "cause": "?", "action": ">", "consequence": "~"}[n["kind"]]
+            mark = "  <- lever" if node_id in levers else ""
+            shift = f"  (moves if: {n['shifts_when']})" if n["shifts_when"] else ""
+            lines.append(f"{'  ' * n['depth']}{glyph} {node_id} [{n['ring'] or '?'}] {n['text']}{shift}{mark}")
+        return "\n".join(lines)
 
     def to_dict(self):
         return {
@@ -81,8 +144,10 @@ class Graph:
             "boundary_edges": self.boundary_edges(),
             "levers": self.levers(),
             "summary": self.summary,
+            "next_move": self.next_move,
             "actions": self.actions,
             "accept": self.accept,
+            "user_edits": self.user_edits,
         }
 
     def save(self, data_dir):
@@ -120,6 +185,7 @@ def search_history(data_dir, text, exclude_session=None, limit=5):
                 hits.append({
                     "ref": f"{session['session_id']}:{node['id']}",
                     "text": node["text"],
+                    "kind": node.get("kind", "cause"),
                     "ring": node["ring"],
                     "problem": session["problem"],
                     "score": round(score, 2),

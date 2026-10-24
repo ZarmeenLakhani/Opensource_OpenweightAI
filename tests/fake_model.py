@@ -26,31 +26,43 @@ class FakeClient:
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
 
-# The worked example from the design: gym skipping traced to a time-zone gap.
-GYM_SCRIPT = [
-    ("set_ring", {"node_id": "n0", "ring": "control", "reason": "going to the gym is my own act"}),
-    ("ask_why", {"node_id": "n0", "question": "What usually gets in the way on a gym day?"}),
-    ("add_cause", {"parent_id": "n0", "text": "Too tired after work", "ring": "influence", "reason": "energy depends on the workday", "actionable": False}),
-    ("ask_why", {"node_id": "n1", "question": "Why are you so tired by the end of work?"}),
-    ("add_cause", {"parent_id": "n1", "text": "I work late most days", "ring": "influence", "reason": "I set my hours within limits", "actionable": True}),
-    ("ask_why", {"node_id": "n2", "question": "What pushes the work late?"}),
-    ("add_cause", {"parent_id": "n2", "text": "Meetings pile up in the afternoon", "ring": "influence", "reason": "I can ask to move some", "actionable": True}),
-    ("ask_why", {"node_id": "n3", "question": "Who sets those afternoon meetings?"}),
-    ("search_history", {"text": "manager schedules meetings"}),
-    ("add_cause", {"parent_id": "n3", "text": "My manager schedules them", "ring": "outside", "reason": "their call, not mine", "actionable": False}),
-    ("ask_why", {"node_id": "n4", "question": "Why does your manager put them in the afternoon?"}),
-    ("add_cause", {"parent_id": "n4", "text": "The team is 8 hours ahead", "ring": "outside", "reason": "geography", "actionable": False}),
+# The career example from the product spec: four whys, one clarify, one what-if, then actions.
+JOB_PROBLEM = "I hate my job. I feel like I'm wasting my potential."
+
+JOB_SCRIPT = [
+    ("set_ring", {"node_id": "n0", "ring": "influence", "reason": "staying or leaving is my call, but the job itself is not"}),
+    ("ask", {"node_id": "n0", "kind": "why", "question": "Why does your job feel like a waste?"}),
+    ("add_cause", {"parent_id": "n0", "text": "Executing other people's ideas instead of building something myself", "ring": "influence", "reason": "I could ask for more ownership", "actionable": True}),
+    ("ask", {"node_id": "n1", "kind": "why", "question": "Why does that bother you?"}),
+    ("add_cause", {"parent_id": "n1", "text": "I want ownership over outcomes, not just deliverables", "ring": "control", "reason": "a value I hold", "actionable": False}),
+    ("ask", {"node_id": "n2", "kind": "why", "question": "Why aren't you pursuing ownership?"}),
+    ("add_cause", {"parent_id": "n2", "text": "I need financial stability", "ring": "influence", "reason": "I can change my runway, not the need", "actionable": True}),
+    ("ask", {"node_id": "n3", "kind": "why", "question": "Why does that keep you stuck?"}),
+    ("add_cause", {"parent_id": "n3", "text": "No clear alternative worth the risk", "ring": "control", "reason": "finding one is work I can do", "actionable": True}),
+    ("ask", {"node_id": "n4", "kind": "clarify", "question": "What would make a change feel safe enough?"}),
+    ("add_cause", {"parent_id": "n4", "text": "No tested idea or evidence of demand yet", "ring": "control", "reason": "testing is mine to do", "actionable": True}),
+    ("add_cause", {"parent_id": "n4", "text": "Not enough savings for a transition", "ring": "control", "reason": "a target I can set", "actionable": True, "shifts_when": "becomes a non-issue once savings cover 6 months"}),
+    ("ask", {"node_id": "n5", "kind": "what_if", "question": "What if you tested one idea while staying employed?"}),
+    ("add_consequence", {"parent_id": "n5", "text": "I'd learn whether anyone wants it without quitting", "ring": "control", "reason": "evidence without risk"}),
+    ("add_action", {"parent_id": "n5", "text": "Build a prototype", "ring": "control", "reason": "evenings and weekends"}),
+    ("add_action", {"parent_id": "n5", "text": "Test customer demand", "ring": "control", "reason": "interviews cost time, not money"}),
+    ("add_action", {"parent_id": "n6", "text": "Set a savings target", "ring": "control", "reason": "a number I choose"}),
+    ("add_action", {"parent_id": "n1", "text": "Negotiate ownership of one project", "ring": "influence", "reason": "my manager decides"}),
+    ("add_action", {"parent_id": "n4", "text": "Find a cofounder", "ring": "influence", "reason": "depends on who says yes"}),
+    ("add_cause", {"parent_id": "n3", "text": "Whether the economy stays stable", "ring": "outside", "reason": "not mine", "actionable": False}),
     ("finish", {
-        "summary": "Gym skipping traces to afternoon meetings that run the day late. The chain leaves your reach at your manager's calendar.",
-        "actions": {"n3": "On Monday, ask to move two afternoon meetings to 9am.", "n2": "Block 6 to 7pm on your calendar every weekday."},
-        "accept": {"n4": "You do not own your manager's calendar. Focus on the two meetings you can ask about."},
+        "summary": "The job itself is not the blocker; the missing piece is evidence that an alternative is worth the risk. Everything needed to get that evidence sits in your control.",
+        "next_move": "Spend two hours this week interviewing three potential customers about one idea. No resignation required.",
+        "actions": {"n3": "Write down the monthly number that would make a transition safe, by Friday."},
+        "accept": {"n13": "You cannot time the economy. Focus on evidence of demand, which you can gather now."},
     }),
 ]
 
-GYM_ANSWERS = [
-    "I'm too tired after work",
-    "I work late most days",
-    "Meetings pile up in the afternoon",
-    "My manager schedules them",
-    "The team is 8 hours ahead",
+JOB_ANSWERS = [
+    "Because I'm executing other people's ideas instead of building something myself.",
+    "Because I want ownership over outcomes, not just deliverables.",
+    "Because I need financial stability.",
+    "Because I don't have a clear alternative worth the risk.",
+    "A tested idea, evidence of demand, and enough savings to make a transition.",
+    "I'd find out if anyone wants it without quitting.",
 ]

@@ -1,4 +1,4 @@
-"""Run a Why Rings session from the terminal against any OpenAI-compatible open-weight endpoint."""
+"""Run a LifeGraph session from the terminal against Gemma 4 (local Ollama or Google's Gemini API)."""
 
 import argparse
 import os
@@ -7,10 +7,20 @@ import sys
 from .agent import run_agent
 from .graph import recurring_roots
 from .render import save_html
+from .tools import USER_COMMANDS
 
 # Gemma 4 hosted on Google's Gemini API, through its OpenAI-compatible endpoint.
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 GEMINI_DEFAULT_MODEL = "gemma-4-26b-a4b-it"
+LOCAL_DEFAULT_MODEL = "gemma4:e4b"
+
+CATEGORIES = [
+    "Career, ambition, or purpose",
+    "Relationships or conflict",
+    "A difficult decision",
+    "Feeling stuck or overwhelmed",
+    "Anything else",
+]
 
 
 def _client(base_url, api_key):
@@ -21,15 +31,27 @@ def _client(base_url, api_key):
     return OpenAI(base_url=base_url, api_key=api_key)
 
 
-def _print_graph(graph):
+def _landing():
+    print("\nLifeGraph · Start with what's weighing on you")
+    print("Enter a real problem or a hypothetical one. You don't need to know the root cause yet.\n")
+    for i, c in enumerate(CATEGORIES, 1):
+        print(f"  {i}. {c}")
     print()
-    for node_id in graph.dfs_order():
-        node = graph.nodes[node_id]
-        marker = " <- lever" if node_id in graph.levers() else ""
-        print(f"{'  ' * node['depth']}[{node['ring']}] {node['text']}{marker}")
-    print(f"\n{graph.summary}\n")
+    while True:
+        raw = input("Pick a number, or just type the problem: ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(CATEGORIES):
+            print(f"\n{CATEGORIES[int(raw) - 1]}. What's going on?")
+            raw = input("> ").strip()
+        if raw:
+            return raw
+
+
+def _print_graph(graph):
+    print("\n" + graph.outline())
+    print(f"\n{graph.summary}")
+    print(f"\nYOUR NEXT MOVE\n  {graph.next_move}")
     if graph.actions:
-        print("Do this week:")
+        print("\nAt the levers:")
         for node_id, action in graph.actions.items():
             print(f"  - {graph.nodes[node_id]['text']}: {action}")
     if graph.accept:
@@ -39,15 +61,15 @@ def _print_graph(graph):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="whyrings")
+    parser = argparse.ArgumentParser(prog="lifegraph")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    ask = sub.add_parser("ask", help="start a 5 Whys session")
-    ask.add_argument("problem", nargs="?", help="the thing that keeps happening")
-    ask.add_argument("--model", default=os.environ.get("WHYRINGS_MODEL", "gemma4:e4b"))
-    ask.add_argument("--base-url", default=os.environ.get("WHYRINGS_BASE_URL", "http://localhost:11434/v1"))
-    ask.add_argument("--api-key", default=os.environ.get("WHYRINGS_API_KEY", "ollama"))
-    ask.add_argument("--data-dir", default=os.environ.get("WHYRINGS_DATA", "data"))
+    ask = sub.add_parser("ask", help="start a session")
+    ask.add_argument("problem", nargs="?", help="what's weighing on you; omit for the landing screen")
+    ask.add_argument("--model", default=os.environ.get("LIFEGRAPH_MODEL", LOCAL_DEFAULT_MODEL))
+    ask.add_argument("--base-url", default=os.environ.get("LIFEGRAPH_BASE_URL", "http://localhost:11434/v1"))
+    ask.add_argument("--api-key", default=os.environ.get("LIFEGRAPH_API_KEY", "ollama"))
+    ask.add_argument("--data-dir", default=os.environ.get("LIFEGRAPH_DATA", "data"))
     ask.add_argument("--verbose", action="store_true", help="print every tool call")
     ask.add_argument(
         "--gemini",
@@ -55,8 +77,8 @@ def main(argv=None):
         help="use Gemma 4 on Google's Gemini API (hosted) instead of local Ollama; needs GEMINI_API_KEY",
     )
 
-    roots = sub.add_parser("roots", help="causes that show up under more than one problem")
-    roots.add_argument("--data-dir", default=os.environ.get("WHYRINGS_DATA", "data"))
+    roots = sub.add_parser("roots", help="explore your decision graph: causes under more than one problem")
+    roots.add_argument("--data-dir", default=os.environ.get("LIFEGRAPH_DATA", "data"))
 
     args = parser.parse_args(argv)
 
@@ -76,12 +98,11 @@ def main(argv=None):
         args.api_key = os.environ.get("GEMINI_API_KEY", "")
         if not args.api_key:
             sys.exit("--gemini needs GEMINI_API_KEY in the environment (get one at https://aistudio.google.com)")
-        if "WHYRINGS_MODEL" not in os.environ and args.model == "gemma4:e4b":
+        if "LIFEGRAPH_MODEL" not in os.environ and args.model == LOCAL_DEFAULT_MODEL:
             args.model = GEMINI_DEFAULT_MODEL
 
-    problem = args.problem or input("What keeps happening? ").strip()
-    if not problem:
-        return 1
+    problem = args.problem or _landing()
+    print(f"\n({USER_COMMANDS.splitlines()[0]} type /help to see how.)")
 
     def ask_user(question):
         print(f"\n{question}")
