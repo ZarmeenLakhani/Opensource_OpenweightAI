@@ -209,6 +209,53 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(client.last_temperature, 1.1)
 
 
+class RateLimitTests(unittest.TestCase):
+    def test_waits_what_the_server_asks_then_continues(self):
+        from lifegraph import agent as agent_module
+
+        client = FakeClient(JOB_SCRIPT)
+        original = client.chat.completions.create
+        calls = {"n": 0}
+
+        class RateLimitError(Exception):
+            status_code = 429
+
+        def create(**kw):
+            calls["n"] += 1
+            if calls["n"] in (2, 3):  # two limits in a row, then fine
+                raise RateLimitError("Error code: 429 - quota exceeded. Please retry in 13.79s.")
+            return original(**kw)
+
+        client.chat.completions.create = create
+        slept, events = [], []
+        real_sleep = agent_module.time.sleep
+        agent_module.time.sleep = slept.append
+        try:
+            graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp(),
+                              on_event=lambda k, p: events.append((k, p)))
+        finally:
+            agent_module.time.sleep = real_sleep
+        self.assertTrue(graph.finished)
+        self.assertEqual(slept, [14.79, 14.79])  # the server's hint plus a second
+        self.assertEqual([p["attempt"] for k, p in events if k == "retry"], [1, 2])
+
+    def test_gives_up_after_the_retry_budget_and_ignores_other_errors(self):
+        from lifegraph import agent as agent_module
+
+        self.assertIsNone(agent_module._retry_after(ValueError("bad json")))
+        self.assertEqual(agent_module._retry_after(RuntimeError("429 Too Many Requests")), 15.0)
+        self.assertEqual(agent_module._retry_after(RuntimeError("429: retry in 90s")), 60.0)  # capped
+
+        client = FakeClient(JOB_SCRIPT)
+        client.chat.completions.create = lambda **kw: (_ for _ in ()).throw(RuntimeError("Error code: 429 - retry in 1s"))
+        agent_module.time.sleep = lambda s: None
+        try:
+            with self.assertRaises(RuntimeError):
+                run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp())
+        finally:
+            agent_module.time.sleep = __import__("time").sleep
+
+
 class HistoryTests(unittest.TestCase):
     def test_search_and_recurring_roots(self):
         data_dir = tempfile.mkdtemp()

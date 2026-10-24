@@ -270,7 +270,13 @@ function render(s) {
     $("live").classList.add("hidden"); $("done").classList.remove("hidden");
     $("nextMove").textContent = s.graph.next_move; $("fullMap").href = `/session/${s.id}.html`;
   }
-  if (s.status === "error") { $("live").classList.add("hidden"); $("errorBox").classList.remove("hidden"); $("errorBox").textContent = s.error; }
+  if (s.status === "error") {
+    $("live").classList.add("hidden"); $("errorBox").classList.remove("hidden");
+    let hint = "";
+    if (/auth key|api key|401|403/i.test(s.error)) hint = "\n\nThe model endpoint rejected the key, so no model ran. Restart the server to get a full diagnosis: python -m lifegraph serve --gemini checks the key at startup. New keys: https://aistudio.google.com/apikey (set GEMINI_API_KEY without quotes).";
+    else if (/connection|connect|refused|ECONNREFUSED/i.test(s.error)) hint = "\n\nNothing is listening at the model endpoint. For local use, start Ollama first (ollama serve) and pull the model (ollama pull gemma4:e4b).";
+    $("errorBox").textContent = s.error + hint;
+  }
 }
 </script>
 </body>

@@ -31,6 +31,55 @@ def _client(base_url, api_key):
     return OpenAI(base_url=base_url, api_key=api_key)
 
 
+def gemini_key_problems(api_key):
+    """Shape checks on an AI Studio key, without revealing it. Returns a list of plain-language problems."""
+    problems = []
+    raw = api_key or ""
+    key = raw.strip().strip('"').strip("'")
+    if not key:
+        return ["GEMINI_API_KEY is empty"]
+    if key != raw:
+        problems.append("the key has quotes or whitespace around it; set it without them")
+    if key.lower().startswith("bearer "):
+        problems.append("the key starts with 'Bearer '; set only the key itself")
+    if key.upper() == "GEMINI_API_KEY" or key.startswith("$"):
+        problems.append("the key is the variable name, not its value")
+    # Two AI Studio key formats are in circulation: the classic 'AIza' + 35 chars, and the newer 'AQ.' + 50 chars.
+    if key.startswith("AIza"):
+        if len(key) != 39:
+            problems.append(f"'AIza' keys are 39 characters; this one is {len(key)}")
+    elif key.startswith("AQ."):
+        if len(key) != 53:
+            problems.append(f"'AQ.' keys are 53 characters; this one is {len(key)}")
+    else:
+        problems.append("AI Studio keys start with 'AIza' or 'AQ.'; this one does not (a Vertex or OAuth token will not work here)")
+    return problems
+
+
+def preflight_gemini(client, api_key):
+    """Check the key against Google before starting a session. Exits with a specific diagnosis on failure."""
+    problems = gemini_key_problems(api_key)
+    try:
+        client.models.list()
+    except Exception as exc:  # the SDK raises its own error types; the message is what matters
+        lines = [f"Google rejected the request before any model ran: {type(exc).__name__}: {exc}", ""]
+        if problems:
+            lines.append("The key as loaded looks wrong:")
+            lines += [f"  - {p}" for p in problems]
+        else:
+            lines.append("The key is the right shape (AIza..., 39 characters), so the problem is on Google's side of it:")
+            lines += [
+                "  - the key's Google Cloud project may not have the 'Generative Language API' enabled",
+                "  - the key may have API or referrer restrictions that exclude it",
+                "  - the key may have been deleted or regenerated",
+            ]
+        lines += ["", "Create a fresh key at https://aistudio.google.com/apikey, then:",
+                  "  export GEMINI_API_KEY=AIza...   (no quotes)", "  python -m lifegraph serve --gemini"]
+        sys.exit("\n".join(lines))
+    if problems:
+        print("Warning, the key worked but looks unusual: " + "; ".join(problems))
+
+
 def _landing():
     print("\nLifeGraph · Start with what's weighing on you")
     print("Enter a real problem or a hypothetical one. You don't need to know the root cause yet.\n")
@@ -114,11 +163,14 @@ def main(argv=None):
         if "LIFEGRAPH_MODEL" not in os.environ and args.model == LOCAL_DEFAULT_MODEL:
             args.model = GEMINI_DEFAULT_MODEL
 
+    client = _client(args.base_url, args.api_key)
+    if args.gemini:
+        preflight_gemini(client, args.api_key)
+
     if args.cmd == "serve":
         from .server import serve as run_server
 
-        run_server(_client(args.base_url, args.api_key), args.model, args.data_dir, host=args.host, port=args.port,
-                   temperature=args.temperature)
+        run_server(client, args.model, args.data_dir, host=args.host, port=args.port, temperature=args.temperature)
         return 0
 
     problem = args.problem or _landing()
@@ -132,7 +184,6 @@ def main(argv=None):
         if args.verbose:
             print(f"  [{kind}] {payload}")
 
-    client = _client(args.base_url, args.api_key)
     graph = run_agent(client, args.model, problem, ask_user, args.data_dir, on_event=on_event, temperature=args.temperature)
     _print_graph(graph)
     json_path = graph.save(args.data_dir)
