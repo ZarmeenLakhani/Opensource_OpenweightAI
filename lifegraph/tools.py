@@ -110,7 +110,7 @@ TOOLS = [
                 "properties": {
                     "parent_id": {"type": "string"},
                     "text": {"type": "string"},
-                    "ring": _ring_prop,
+                    "ring": {**_ring_prop, "description": "Could the person change this result? Their own feelings and choices are control; another person's decision is influence; outside only for what no choice of theirs affects."},
                     "reason": {"type": "string"},
                 },
                 "required": ["parent_id", "text", "ring", "reason"],
