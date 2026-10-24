@@ -77,6 +77,15 @@ class ServerTests(unittest.TestCase):
         _, _, raw = self._get("/api/sessions")
         listing = json.loads(raw)
         self.assertEqual(listing["sessions"][0]["id"], sid)
+        self.assertEqual(listing["totals"]["quests_done"], 0)
+
+        before = state["graph"]["score"]["points"]
+        status, j = self._post("/api/quest_done", {"session": sid})
+        self.assertEqual(status, 200)
+        self.assertEqual(j["score"]["points"], before + 100)
+        self.assertEqual(j["totals"]["quests_done"], 1)
+        self.assertEqual(self._post("/api/quest_done", {"session": sid})[1]["totals"]["points"], before + 100)  # idempotent
+        self.assertEqual(self._post("/api/quest_done", {"session": "nope"})[0], 404)
 
     def test_answer_when_not_asking_is_rejected(self):
         status, j = self._post("/api/answer", {"session": "nope", "answer": "x"})

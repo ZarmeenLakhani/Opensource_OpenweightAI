@@ -42,7 +42,7 @@ details{{padding:0 24px 24px;font-size:12px;color:var(--muted)}} pre{{white-spac
 </div>
 <details><summary>Raw graph</summary><pre>{html.escape(json.dumps(graph.to_dict(), indent=2))}</pre></details>
 <script>{TREE_JS.read_text()}</script>
-<script>LifeGraphTree.render(document.getElementById("map"), {data});</script>
+<script>LifeGraphTree.render(document.getElementById("map"), {data}, {{expandAll: true}});</script>
 </body></html>"""
 
 

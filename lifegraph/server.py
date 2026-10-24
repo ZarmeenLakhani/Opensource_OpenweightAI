@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .agent import run_agent
-from .graph import Graph, load_sessions, recurring_roots
+from .graph import Graph, load_sessions, mark_quest_done, recurring_roots, totals
 from .render import render_html, save_html
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -135,9 +135,10 @@ def make_handler(app):
                     return self._send(HTTPStatus.NOT_FOUND, {"error": "no such session"})
                 return self._send(HTTPStatus.OK, session.state())
             if url.path == "/api/sessions":
-                past = [{"id": s["session_id"], "problem": s["problem"], "next_move": s.get("next_move", "")}
+                past = [{"id": s["session_id"], "problem": s["problem"], "next_move": s.get("next_move", ""),
+                         "points": s.get("score", {}).get("points", 0), "done": bool(s.get("completed_at"))}
                         for s in load_sessions(app.data_dir)]
-                return self._send(HTTPStatus.OK, {"sessions": past[::-1], "roots": recurring_roots(app.data_dir)})
+                return self._send(HTTPStatus.OK, {"sessions": past[::-1], "roots": recurring_roots(app.data_dir), "totals": totals(app.data_dir)})
             if url.path.startswith("/session/"):
                 session_id = url.path[len("/session/"):].removesuffix(".html")
                 live = app.sessions.get(session_id)
@@ -164,6 +165,17 @@ def make_handler(app):
                 if not session.answer((body.get("answer") or "").strip()):
                     return self._send(HTTPStatus.CONFLICT, {"error": "the agent is not waiting for an answer"})
                 return self._send(HTTPStatus.OK, {"ok": True})
+            if url.path == "/api/quest_done":
+                session_id = body.get("session", "")
+                live = app.sessions.get(session_id)
+                if live and live.status == "done" and not live.graph.completed_at:
+                    live.graph.completed_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+                    live.graph.save(app.data_dir)
+                    return self._send(HTTPStatus.OK, {"ok": True, "score": live.graph.score(), "totals": totals(app.data_dir)})
+                updated = mark_quest_done(app.data_dir, session_id)
+                if not updated:
+                    return self._send(HTTPStatus.NOT_FOUND, {"error": "no such finished session"})
+                return self._send(HTTPStatus.OK, {"ok": True, "score": updated["score"], "totals": totals(app.data_dir)})
             return self._send(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
     return Handler

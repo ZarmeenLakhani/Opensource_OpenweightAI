@@ -107,6 +107,11 @@ class ToolRunnerTests(unittest.TestCase):
         self.assertIn("n1", r.run("finish", {**base, "next_move": "do x", "actions": {}})["error"])
         self.assertIn("what_if", r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["error"])
         r.run("ask", {"node_id": "n0", "kind": "what_if", "question": "what if?"})
+        self.assertIn("two paths", r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["error"])
+        g.add_option("n0", "stay", "control")
+        g.add_option("n0", "leave", "control")
+        with self.assertRaises(ValueError):
+            g.add_option("n0", "fate", "outside")
         bad_accept = {**base, "next_move": "do x", "actions": {"n1": "do"}, "accept": {"n1": "let go"}}
         self.assertIn("outside", r.run("finish", bad_accept)["error"])
         self.assertTrue(r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["ok"])
@@ -163,10 +168,17 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(client.script, [])
         self.assertEqual(graph.levers(), ["n3"])
         self.assertIn("two hours", graph.next_move)
+        self.assertEqual([o["text"][:4] for o in graph.options()], ["Stay", "Ask ", "Test"])
         by_ring = graph.by_ring(kind="action")
         self.assertEqual([n["text"] for n in by_ring["control"]], ["Build a prototype", "Test customer demand", "Set a savings target"])
-        self.assertEqual({n["text"] for n in by_ring["influence"]}, {"Negotiate ownership of one project", "Find a cofounder"})
+        self.assertEqual([n["text"] for n in by_ring["influence"]], ["Negotiate ownership of one project"])
         self.assertEqual(by_ring["outside"], [])
+        # consequences hang under the path they were asked about
+        self.assertEqual([c["kind"] for c in graph.children("n7")], ["consequence", "action", "action", "action", "consequence"])
+        score = graph.score()
+        self.assertEqual((score["causes"], score["levers"], score["paths"], score["what_ifs"]), (4, 1, 3, 4))
+        self.assertEqual(score["points"], 4 * 10 + 25 + 3 * 15 + 4 * 20 + 50)
+        self.assertEqual(score["depth"], 4)
         self.assertTrue(any(m["role"] == "tool" for m in client.seen_messages))
 
         saved = json.loads(graph.save(data_dir).read_text())
