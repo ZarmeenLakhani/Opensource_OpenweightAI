@@ -97,6 +97,18 @@ class ToolRunnerTests(unittest.TestCase):
             r.run("add_cause", {"parent_id": "n0", "text": "c", "ring": "control", "reason": "", "actionable": False})
         self.assertIn("call finish", r.run("ask", {"node_id": "n0", "kind": "why", "question": "why?"})["error"])
 
+    def test_root_lever_needs_no_separate_action(self):
+        g = Graph("p", session_id="s1")
+        g.set_ring("n0", "control")
+        g.add_cause("n0", "the weather", "outside")  # n0 is now a lever
+        g.add_option("n0", "stay", "control")
+        g.add_option("n0", "go", "control")
+        r = runner_for(g)
+        r.run("ask", {"node_id": "n0", "kind": "what_if", "question": "what if?"})
+        r.run("add_consequence", {"parent_id": "n2", "text": "then", "ring": "control", "reason": ""})
+        self.assertEqual(g.levers(), ["n0"])
+        self.assertTrue(r.run("finish", {"summary": "s", "next_move": "do x", "actions": {}, "accept": {}})["ok"])
+
     def test_finish_guardrails(self):
         g = Graph("p", session_id="s1")
         g.set_ring("n0", "control")
@@ -209,9 +221,11 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(saved["next_move"], graph.next_move)
 
         page = save_html(graph, data_dir).read_text()
-        self.assertIn("Your next move", page)
+        self.assertIn("your quest", page)
+        self.assertIn("two hours this week", page)
         self.assertIn("leaves your reach", page)
         self.assertIn("LifeGraphTree.render", page)  # the tree renderer is inlined, so the file stands alone
+        self.assertIn("window.LifeGraphSketch", page)  # and so is the sketch layer it needs
         self.assertIn('"levers": ["n3"]', page)  # the graph JSON is embedded for it
 
     def test_prose_reply_is_pushed_back_to_tools(self):

@@ -157,7 +157,7 @@ TOOLS = [
                     },
                     "accept": {
                         "type": "object",
-                        "description": "node_id of an outside node -> what to let go of and where to refocus.",
+                        "description": "node_id of an existing outside node -> what to let go of and where to refocus. Empty {} when nothing on the map is outside; do not add nodes just to fill this.",
                         "additionalProperties": {"type": "string"},
                     },
                 },
@@ -322,7 +322,8 @@ class ToolRunner:
             return {"error": self._pending_error()}
         if not next_move.strip():
             return {"error": "next_move must be one concrete step"}
-        missing = [lever for lever in self.graph.levers() if lever not in actions]
+        # The problem itself can be a lever (an outside cause hangs straight off it); next_move already covers that.
+        missing = [lever for lever in self.graph.levers() if lever != "n0" and lever not in actions]
         if missing:
             return {"error": f"actions is missing these lever nodes: {missing}"}
         if self.what_ifs_asked == 0 and self.questions_asked < MAX_QUESTIONS:
