@@ -174,9 +174,9 @@ class AgentLoopTests(unittest.TestCase):
 
         page = save_html(graph, data_dir).read_text()
         self.assertIn("Your next move", page)
-        self.assertIn("Outside my control", page)
         self.assertIn("leaves your reach", page)
-        self.assertIn("moves if:", page)
+        self.assertIn("LifeGraphTree.render", page)  # the tree renderer is inlined, so the file stands alone
+        self.assertIn('"levers": ["n3"]', page)  # the graph JSON is embedded for it
 
     def test_prose_reply_is_pushed_back_to_tools(self):
         client = FakeClient(JOB_SCRIPT)

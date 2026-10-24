@@ -5,120 +5,120 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LifeGraph</title>
 <style>
-:root{--control:#1f7a4d;--influence:#b07d10;--outside:#6b6b6b;--control-bg:#e8f5ee;--influence-bg:#fff6df;--outside-bg:#f0f0f0;--ink:#1a1a1a;--muted:#666;--line:#e3e3e3;--accent:#1f7a4d}
+:root{--control:#1f7a4d;--influence:#b8860b;--outside:#7a7a7a;--ink:#1d1d1f;--muted:#6e6e73;--line:#e5e5e7;--bg:#f7f7f8}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#fafafa}
-header{padding:18px 24px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:baseline;gap:14px}
-header h1{font-size:18px;margin:0}
-header span{color:var(--muted);font-size:13px}
-main{max-width:1200px;margin:0 auto;padding:24px 16px}
-.hidden{display:none}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg);display:flex;flex-direction:column}
+header{height:52px;padding:0 20px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:center;gap:18px;flex:none}
+header h1{font-size:17px;margin:0;letter-spacing:-.01em}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-left:auto}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.legend .pill{border-radius:5px;width:16px}
+.legend .red{width:14px;height:3px;border-radius:2px;background:#c0392b;vertical-align:2px}
+.hidden{display:none !important}
 /* landing */
-#landing{max-width:640px;margin:48px auto}
-#landing h2{font-size:26px;margin:0 0 6px}
-#landing p{color:var(--muted);margin:0 0 22px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+#landing{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+#landing .box{width:min(620px,100%)}
+#landing h2{font-size:28px;margin:0 0 6px;letter-spacing:-.02em}
+#landing p{color:var(--muted);margin:0 0 20px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;cursor:pointer;font-size:14px}
-.chip.on,.chip:hover{border-color:var(--accent);color:var(--accent)}
-textarea{width:100%;min-height:96px;padding:12px;font:inherit;border:1px solid var(--line);border-radius:10px;resize:vertical}
-button.primary{margin-top:12px;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
+.chip.on,.chip:hover{border-color:var(--control);color:var(--control)}
+textarea{width:100%;min-height:96px;padding:14px;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px;resize:vertical;background:#fff}
+button.primary{margin-top:12px;background:var(--control);color:#fff;border:0;border-radius:12px;padding:13px 20px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 button.primary:disabled{opacity:.5;cursor:default}
-.past{margin-top:36px;border-top:1px solid var(--line);padding-top:18px}
-.past h3{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.past a{display:block;padding:6px 0;color:var(--ink);text-decoration:none}
-.past a:hover{color:var(--accent)}
-.roots li{margin:4px 0}
+.past{margin-top:28px;font-size:14px}
+.past a{display:block;color:var(--muted);text-decoration:none;padding:4px 0}
+.past a:hover{color:var(--control)}
 /* session */
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-@media(max-width:900px){.cols{grid-template-columns:1fr}}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
-.problem{font-size:17px;font-weight:600;margin:0 0 12px}
-#transcript{max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
-.msg{padding:10px 12px;border-radius:10px;max-width:92%;font-size:15px;line-height:1.4;white-space:pre-wrap}
-.msg.agent{background:#f1f5f3;align-self:flex-start}
-.msg.you{background:var(--control);color:#fff;align-self:flex-end}
-.msg.note{background:#fff6df;color:#5a4300;font-size:13px;align-self:stretch;font-family:ui-monospace,monospace}
-.thinking{color:var(--muted);font-size:13px;padding:6px 0}
-form.answer{display:flex;gap:8px;margin-top:12px}
-form.answer input{flex:1;padding:12px;font:inherit;border:1px solid var(--line);border-radius:10px}
-form.answer button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:0 16px;font:inherit;font-weight:600;cursor:pointer}
+#session{flex:1;display:flex;flex-direction:column;min-height:0}
+#map{flex:1;width:100%;min-height:0;background:var(--bg)}
+#map .node{transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+#map .node rect{transition:stroke-width .2s}
+#map .node:hover rect{stroke-width:3}
+#map .lever rect{stroke:#c0392b;stroke-width:3;filter:drop-shadow(0 0 6px rgba(192,57,43,.35))}
+#map .focus rect{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{stroke-width:2;filter:none}50%{stroke-width:5;filter:drop-shadow(0 0 10px rgba(31,122,77,.5))}}
+.dock{flex:none;background:#fff;border-top:1px solid var(--line);padding:14px 20px 16px}
+.dock .inner{max-width:900px;margin:0 auto}
+.q{font-size:19px;font-weight:600;letter-spacing:-.01em;min-height:26px;margin-bottom:10px}
+.q.thinking{color:var(--muted);font-weight:400;font-size:15px}
+form.answer{display:flex;gap:8px}
+form.answer input{flex:1;padding:13px 14px;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px}
+form.answer input:disabled{background:#f3f3f4}
+form.answer button{background:var(--control);color:#fff;border:0;border-radius:12px;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}
 form.answer button:disabled{opacity:.4}
-.hint{font-size:12px;color:var(--muted);margin-top:8px}
-.hint code{background:#f1f1f1;padding:1px 5px;border-radius:4px}
-.next{border:2px solid var(--control);background:var(--control-bg);padding:12px 14px;border-radius:10px;margin-bottom:14px}
-.next h4{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--control)}
-.regions{display:grid;gap:10px;margin-top:14px}
-.region{border-radius:10px;padding:10px 14px;border:1px solid var(--line)}
-.region h3{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-.region ul{margin:4px 0 0;padding-left:18px;font-size:14px}
-.region li.action{color:var(--control)}
-.region li.action::marker{content:"\2192  "}
-.region li.consequence{font-style:italic;color:#444}
-.region .empty{color:#aaa;font-size:13px}
-.region.control{background:var(--control-bg)}.region.control h3{color:var(--control)}
-.region.influence{background:var(--influence-bg)}.region.influence h3{color:var(--influence)}
-.region.outside{background:var(--outside-bg)}.region.outside h3{color:var(--outside)}
-.tree{font-size:13px;margin-top:14px}
-.tree div{padding:3px 0}
-.badge{font-size:10px;padding:1px 6px;border-radius:8px;color:#fff;background:#999;vertical-align:middle;margin-right:4px}
-.b-control{background:var(--control)}.b-influence{background:var(--influence)}.b-outside{background:var(--outside)}
-.lever{font-weight:600}.lever::after{content:" lever";color:#c0392b;font-size:11px;font-weight:600}
-.crossing{border-left:3px solid #c0392b;padding-left:6px}
-.id{color:#aaa;font-family:ui-monospace,monospace;font-size:11px;margin-right:4px}
-details{margin-top:12px;font-size:12px;color:var(--muted)}
-details pre{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto}
-.done a{color:var(--control);font-weight:600}
+.tiny{font-size:11.5px;color:var(--muted);margin-top:8px;display:flex;gap:14px;align-items:center}
+.tiny code{background:#f1f1f2;padding:1px 5px;border-radius:4px}
+.tiny a{color:var(--muted);margin-left:auto;cursor:pointer;text-decoration:underline}
+.next{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;border:2px solid var(--control);background:#e6f4ec;padding:12px 16px;border-radius:12px}
+.next b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--control)}
+.next span{font-size:16px;font-weight:600}
+.next a{color:var(--control);font-size:14px;white-space:nowrap}
 .error{background:#fdecea;color:#7a1f16;padding:10px 12px;border-radius:10px;font-size:14px;white-space:pre-wrap}
+/* history drawer */
+#history{position:fixed;top:52px;left:0;bottom:0;width:360px;background:#fff;border-right:1px solid var(--line);padding:16px;overflow:auto;box-shadow:4px 0 16px rgba(0,0,0,.06);z-index:5}
+#history .msg{padding:8px 11px;border-radius:10px;margin-bottom:8px;font-size:13.5px;white-space:pre-wrap}
+#history .agent{background:#f1f5f3}
+#history .you{background:var(--control);color:#fff;margin-left:30px}
+#history .note{background:#fff4d6;font-family:ui-monospace,monospace;font-size:12px}
+#history pre{font-size:11px;color:var(--muted);white-space:pre-wrap}
 </style>
 </head>
 <body>
-<header><h1>LifeGraph</h1><span>decisions, mapped into what you control</span></header>
-<main>
+<header>
+  <h1>LifeGraph</h1>
+  <div class="legend" id="legend">
+    <span><i style="background:#e6f4ec;border:2px solid var(--control)"></i>control</span>
+    <span><i style="background:#fff4d6;border:2px solid var(--influence)"></i>influence</span>
+    <span><i style="background:#ececec;border:2px solid var(--outside)"></i>outside</span>
+    <span><i class="pill" style="background:var(--control)"></i>action</span>
+    <span><i class="red"></i>leaves your reach</span>
+  </div>
+</header>
 
 <section id="landing">
-  <h2>Start with what's weighing on you</h2>
-  <p>Enter a real problem or a hypothetical one. You don't need to know the root cause yet.</p>
-  <div class="chips" id="chips"></div>
-  <textarea id="problem" placeholder="I hate my job. I feel like I'm wasting my potential."></textarea>
-  <button class="primary" id="start">Explore my decision graph</button>
-  <div class="past" id="past"></div>
-</section>
-
-<section id="session" class="hidden">
-  <div class="cols">
-    <div class="card">
-      <p class="problem" id="problemText"></p>
-      <div id="transcript"></div>
-      <div class="thinking" id="thinking">the agent is thinking…</div>
-      <form class="answer" id="answerForm">
-        <input id="answer" autocomplete="off" placeholder="Your answer…" disabled>
-        <button id="send" disabled>Send</button>
-      </form>
-      <p class="hint">Disagree with the map? Type a command instead of an answer:
-        <code>/move n3 influence</code> <code>/edit n2 new wording</code> <code>/delete n4</code> <code>/explore n1</code> <code>/map</code></p>
-      <div id="doneBox" class="done hidden"></div>
-      <div id="errorBox" class="error hidden"></div>
-      <details><summary>What the agent is doing</summary><pre id="events"></pre></details>
-    </div>
-    <div class="card">
-      <div class="next hidden" id="nextMove"><h4>Your next move</h4><div id="nextMoveText"></div></div>
-      <div class="regions" id="regions"></div>
-      <div class="tree" id="tree"></div>
-    </div>
+  <div class="box">
+    <h2>Start with what's weighing on you</h2>
+    <p>A real problem or a hypothetical one. You don't need to know the root cause yet.</p>
+    <div class="chips" id="chips"></div>
+    <textarea id="problem" placeholder="I hate my job. I feel like I'm wasting my potential."></textarea>
+    <button class="primary" id="start">Explore my decision graph</button>
+    <div class="past" id="past"></div>
   </div>
 </section>
 
-</main>
+<section id="session" class="hidden">
+  <svg id="map" preserveAspectRatio="xMidYMin meet"></svg>
+  <div class="dock"><div class="inner">
+    <div id="live">
+      <div class="q" id="question"></div>
+      <form class="answer" id="answerForm">
+        <input id="answer" autocomplete="off" placeholder="Your answer" disabled>
+        <button id="send" disabled>Send</button>
+      </form>
+      <div class="tiny">
+        <span>Disagree with the map? <code>/move n3 influence</code> <code>/edit n2 …</code> <code>/delete n4</code> <code>/explore n1</code></span>
+        <a id="historyToggle">history</a>
+      </div>
+    </div>
+    <div id="done" class="next hidden"><b>Your next move</b><span id="nextMove"></span><span><a id="fullMap" target="_blank">open map</a> &nbsp;·&nbsp; <a href="/">start another</a></span></div>
+    <div id="errorBox" class="error hidden"></div>
+  </div></div>
+</section>
+
+<aside id="history" class="hidden">
+  <div id="transcript"></div>
+  <details><summary style="font-size:12px;color:var(--muted)">tool calls</summary><pre id="events"></pre></details>
+</aside>
+
+<script src="/tree.js"></script>
 <script>
 const CATEGORIES = ["Career, ambition, or purpose","Relationships or conflict","A difficult decision","Feeling stuck or overwhelmed","Anything else"];
-const RINGS = ["control","influence","outside"];
-const LABEL = {control:"Control", influence:"Influence", outside:"Outside my control"};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let sessionId = null, pollTimer = null;
 
-let sessionId = null, lastTranscriptLen = 0, pollTimer = null;
-
-// landing
 CATEGORIES.forEach(c => {
   const b = document.createElement("button"); b.className = "chip"; b.textContent = c;
   b.onclick = () => { document.querySelectorAll(".chip").forEach(x => x.classList.remove("on")); b.classList.add("on"); $("problem").focus(); };
@@ -131,20 +131,16 @@ $("start").onclick = async () => {
   const r = await fetch("/api/start", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({problem})});
   const j = await r.json();
   if (!r.ok) { alert(j.error); $("start").disabled = false; return; }
-  sessionId = j.session; lastTranscriptLen = 0;
-  $("problemText").textContent = problem;
+  sessionId = j.session;
   $("landing").classList.add("hidden"); $("session").classList.remove("hidden");
   poll();
 };
 (async () => {
   const j = await (await fetch("/api/sessions")).json();
-  let html = "";
-  if (j.roots.length) html += "<h3>Causes under more than one problem</h3><ul class='roots'>" + j.roots.map(g => `<li><span class="badge b-${g.ring}">${g.ring}</span>${esc(g.text)} <span style="color:#999">(${g.problems.length} problems)</span></li>`).join("") + "</ul>";
-  if (j.sessions.length) html += "<h3>Past sessions</h3>" + j.sessions.map(s => `<a href="/session/${s.id}.html" target="_blank">${esc(s.problem)}${s.next_move ? " <span style='color:#999'>→ " + esc(s.next_move) + "</span>" : ""}</a>`).join("");
-  $("past").innerHTML = html;
+  if (j.sessions.length) $("past").innerHTML = j.sessions.slice(0, 6).map(s => `<a href="/session/${s.id}.html" target="_blank">↗ ${esc(s.problem)}</a>`).join("");
 })();
+$("historyToggle").onclick = () => $("history").classList.toggle("hidden");
 
-// session
 $("answerForm").onsubmit = async e => {
   e.preventDefault();
   const answer = $("answer").value.trim();
@@ -161,47 +157,23 @@ async function poll() {
   if (!r.ok) return;
   const s = await r.json();
   render(s);
-  if (s.status === "asking") {
-    $("answer").disabled = false; $("send").disabled = false; $("answer").focus();
-  }
-  if (s.status === "thinking" || s.status === "asking") pollTimer = setTimeout(poll, s.status === "asking" ? 2500 : 700);
+  if (s.status === "asking") { $("answer").disabled = false; $("send").disabled = false; $("answer").focus(); }
+  if (s.status === "thinking" || s.status === "asking") pollTimer = setTimeout(poll, s.status === "asking" ? 2500 : 600);
 }
 
 function render(s) {
-  const t = $("transcript");
-  if (s.transcript.length !== lastTranscriptLen) {
-    t.innerHTML = s.transcript.map(m => `<div class="msg ${m.role}">${esc(m.text)}</div>`).join("");
-    t.scrollTop = t.scrollHeight; lastTranscriptLen = s.transcript.length;
-  }
-  $("thinking").classList.toggle("hidden", s.status !== "thinking");
+  const q = $("question");
+  if (s.status === "asking") { q.textContent = s.question; q.className = "q"; }
+  else if (s.status === "thinking") { q.textContent = "thinking…"; q.className = "q thinking"; }
+  $("transcript").innerHTML = s.transcript.map(m => `<div class="msg ${m.role}">${esc(m.text)}</div>`).join("");
   $("events").textContent = s.events.map(e => e.error ? `error: ${e.error}` : `${e.name} ${JSON.stringify(e.args)}`).join("\n");
+  const lastAsk = [...s.events].reverse().find(e => e.name === "ask");
+  if (s.graph) LifeGraphTree.render($("map"), s.graph, { focusId: s.status === "asking" && lastAsk ? lastAsk.args.node_id : null });
   if (s.status === "done") {
-    $("answerForm").classList.add("hidden");
-    $("doneBox").classList.remove("hidden");
-    $("doneBox").innerHTML = `<p>${esc(s.graph.summary)}</p><a href="/session/${s.id}.html" target="_blank">Open the full map</a> · <a href="/">Start another</a>`;
+    $("live").classList.add("hidden"); $("done").classList.remove("hidden");
+    $("nextMove").textContent = s.graph.next_move; $("fullMap").href = `/session/${s.id}.html`;
   }
-  if (s.status === "error") { $("errorBox").classList.remove("hidden"); $("errorBox").textContent = s.error; $("answerForm").classList.add("hidden"); }
-  if (s.graph) renderGraph(s.graph);
-}
-
-function renderGraph(g) {
-  if (g.next_move) { $("nextMove").classList.remove("hidden"); $("nextMoveText").textContent = g.next_move; }
-  const byRing = {control:[], influence:[], outside:[]};
-  g.nodes.forEach(n => { if (n.ring) byRing[n.ring].push(n); });
-  $("regions").innerHTML = RINGS.map(r => {
-    const items = byRing[r].filter(n => r === "outside" ? n.kind !== "action" : true)
-      .sort((a, b) => (a.kind === "action" ? 0 : 1) - (b.kind === "action" ? 0 : 1));
-    const lis = items.map(n => `<li class="${n.kind}">${esc(n.text)}</li>`).join("");
-    return `<section class="region ${r}"><h3>${LABEL[r]}</h3>${lis ? "<ul>" + lis + "</ul>" : "<div class='empty'>nothing here yet</div>"}</section>`;
-  }).join("");
-  const levers = new Set(g.levers), crossing = new Set(g.boundary_edges.map(e => e[1]));
-  const byId = Object.fromEntries(g.nodes.map(n => [n.id, n]));
-  const kids = id => g.nodes.filter(n => n.parent_id === id);
-  const rows = []; const walk = (id, d) => { const n = byId[id]; if (!n) return;
-    rows.push(`<div class="${levers.has(id) ? "lever " : ""}${crossing.has(id) ? "crossing" : ""}" style="margin-left:${d*18}px"><span class="id">${id}</span><span class="badge b-${n.ring || ""}">${n.ring || "?"}</span>${n.kind === "action" ? "→ " : n.kind === "consequence" ? "⇝ " : ""}${esc(n.text)}${n.shifts_when ? ` <span style="color:#999">(moves if: ${esc(n.shifts_when)})</span>` : ""}</div>`);
-    kids(id).forEach(k => walk(k.id, d + 1)); };
-  walk("n0", 0);
-  $("tree").innerHTML = rows.join("");
+  if (s.status === "error") { $("live").classList.add("hidden"); $("errorBox").classList.remove("hidden"); $("errorBox").textContent = s.error; }
 }
 </script>
 </body>

@@ -127,6 +127,8 @@ def make_handler(app):
             q = parse_qs(url.query)
             if url.path in ("/", "/index.html"):
                 return self._send(HTTPStatus.OK, (WEB_DIR / "index.html").read_bytes(), "text/html")
+            if url.path == "/tree.js":
+                return self._send(HTTPStatus.OK, (WEB_DIR / "tree.js").read_bytes(), "text/javascript")
             if url.path == "/api/state":
                 session = app.sessions.get(q.get("session", [""])[0])
                 if not session:
