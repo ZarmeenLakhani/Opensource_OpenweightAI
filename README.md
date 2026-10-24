@@ -79,11 +79,19 @@ The loop (`lifegraph/agent.py`) is about 50 lines: model picks a tool, Python ru
 ```bash
 pip install -r requirements.txt            # only dependency: openai SDK, used as a generic client
 ollama pull gemma4:e4b
+python -m lifegraph serve                   # web UI at http://localhost:8000
+```
+
+Open http://localhost:8000: the landing screen with categories, then a chat on the left and the live map on the right (three regions filling in as you answer, the graph tree underneath, your next move at the top when it finishes). The web server is Python's standard library, nothing else to install. `--port`, `--model`, `--base-url` and `--gemini` work the same as for `ask`.
+
+Prefer the terminal?
+
+```bash
 python -m lifegraph ask                     # landing screen with categories
 python -m lifegraph ask "I hate my job"     # or jump straight in
 ```
 
-Each session writes `data/sessions/<id>.json` and `data/sessions/<id>.html` (next move at the top, the graph on the left with levers and boundary crossings marked, the three regions on the right).
+Each session writes `data/sessions/<id>.json` and `data/sessions/<id>.html` (next move at the top, the graph on the left with levers and boundary crossings marked, the three regions on the right). Past sessions are listed on the landing page.
 
 Which Gemma 4 to pull:
 
