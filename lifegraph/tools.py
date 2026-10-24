@@ -221,6 +221,8 @@ class ToolRunner:
         self.notify = notify
         self.questions_asked = 0
         self.what_ifs_asked = 0
+        self.pending = None  # node_id whose latest answer has not been recorded on the map yet
+        self.last_answer = ""
 
     def run(self, name, args):
         handler = getattr(self, f"_{name}", None)
@@ -246,6 +248,8 @@ class ToolRunner:
             return {"error": f"{node_id} is at depth {MAX_DEPTH}; no more why on this branch (what_if and clarify are fine)"}
         if self.questions_asked >= MAX_QUESTIONS:
             return {"error": f"{MAX_QUESTIONS} questions asked; call finish"}
+        if self.pending:
+            return {"error": self._pending_error()}
 
         self.questions_asked += 1
         if kind == "what_if":
@@ -267,7 +271,11 @@ class ToolRunner:
                 break
             prompt = question  # ask the same question again after an edit
 
+        if answer:
+            self.pending, self.last_answer = node_id, answer
         result = {"answer": answer, "questions_asked": self.questions_asked}
+        if answer:
+            result["next"] = f"record this answer on the map under {node_id} (add_cause, add_consequence or add_action) before asking anything else"
         if edits:
             result["user_edits"] = edits
             result["outline"] = self.graph.outline()
@@ -275,21 +283,32 @@ class ToolRunner:
             result["user_request"] = request
         return result
 
+    def _pending_error(self):
+        return (f"the person's last answer about {self.pending} is not on the map yet: \"{self.last_answer[:160]}\". "
+                f"Record it first with add_cause, add_consequence or add_action under {self.pending}.")
+
     def _add_cause(self, parent_id, text, ring, reason="", actionable=False, shifts_when=""):
         node = self.graph.add_cause(parent_id, text, ring, reason, actionable, shifts_when)
+        self.pending = None
         hint = ""
         if ring == "outside" and self.graph.nodes[parent_id]["ring"] != "outside":
             hint = f"{parent_id} is now a lever: the last reachable node before this chain leaves the person's control."
         return {"ok": True, "node": node, "hint": hint}
 
     def _add_action(self, parent_id, text, ring, reason=""):
-        return {"ok": True, "node": self.graph.add_action(parent_id, text, ring, reason)}
+        node = self.graph.add_action(parent_id, text, ring, reason)
+        self.pending = None
+        return {"ok": True, "node": node}
 
     def _add_option(self, parent_id, text, ring, reason=""):
+        if self.pending:
+            return {"error": self._pending_error()}
         return {"ok": True, "node": self.graph.add_option(parent_id, text, ring, reason)}
 
     def _add_consequence(self, parent_id, text, ring, reason=""):
-        return {"ok": True, "node": self.graph.add_consequence(parent_id, text, ring, reason)}
+        node = self.graph.add_consequence(parent_id, text, ring, reason)
+        self.pending = None
+        return {"ok": True, "node": node}
 
     def _search_history(self, text):
         return {"matches": search_history(self.data_dir, text, exclude_session=self.graph.session_id)}
@@ -299,6 +318,8 @@ class ToolRunner:
         return {"ok": True}
 
     def _finish(self, summary, next_move, actions, accept):
+        if self.pending:
+            return {"error": self._pending_error()}
         if not next_move.strip():
             return {"error": "next_move must be one concrete step"}
         missing = [lever for lever in self.graph.levers() if lever not in actions]
