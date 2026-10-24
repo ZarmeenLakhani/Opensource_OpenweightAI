@@ -53,6 +53,13 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("text/html", ctype)
         self.assertIn(b"Explore my decision graph", page)
+        for asset, ctype_part in (("/sketch.js", "javascript"), ("/tree.js", "javascript"), ("/fonts/PatrickHand.ttf", "font/ttf")):
+            status, ctype, body = self._get(asset)
+            self.assertEqual((asset, status), (asset, 200))
+            self.assertIn(ctype_part, ctype)
+            self.assertGreater(len(body), 1000)
+        with self.assertRaises(urllib.error.HTTPError):
+            self._get("/fonts/../server.py")
 
         status, j = self._post("/api/start", {"problem": JOB_PROBLEM, "temperature": 0.9})
         self.assertEqual(status, 200)
@@ -75,7 +82,8 @@ class ServerTests(unittest.TestCase):
 
         status, ctype, html = self._get(f"/session/{sid}.html")
         self.assertEqual(status, 200)
-        self.assertIn(b"Your next move", html)
+        self.assertIn(b"your quest", html)
+        self.assertIn(b"window.LifeGraphSketch", html)
 
         _, _, raw = self._get("/api/sessions")
         listing = json.loads(raw)

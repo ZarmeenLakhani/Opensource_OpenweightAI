@@ -131,8 +131,12 @@ def make_handler(app):
             q = parse_qs(url.query)
             if url.path in ("/", "/index.html"):
                 return self._send(HTTPStatus.OK, (WEB_DIR / "index.html").read_bytes(), "text/html")
-            if url.path == "/tree.js":
-                return self._send(HTTPStatus.OK, (WEB_DIR / "tree.js").read_bytes(), "text/javascript")
+            if url.path in ("/tree.js", "/sketch.js"):
+                return self._send(HTTPStatus.OK, (WEB_DIR / url.path[1:]).read_bytes(), "text/javascript")
+            if url.path.startswith("/fonts/") and "/" not in url.path[7:]:
+                font = WEB_DIR / "fonts" / url.path[7:]
+                if font.suffix == ".ttf" and font.exists():
+                    return self._send(HTTPStatus.OK, font.read_bytes(), "font/ttf")
             if url.path == "/api/state":
                 session = app.sessions.get(q.get("session", [""])[0])
                 if not session:

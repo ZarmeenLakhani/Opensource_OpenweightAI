@@ -5,103 +5,111 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LifeGraph</title>
 <style>
-:root{--control:#1f7a4d;--influence:#b8860b;--outside:#7a7a7a;--ink:#1d1d1f;--muted:#6e6e73;--line:#e5e5e7;--bg:#f7f7f8}
+@font-face{font-family:"Patrick Hand";src:url(/fonts/PatrickHand.ttf) format("truetype");font-display:swap}
+@font-face{font-family:"Caveat";src:url(/fonts/Caveat.ttf) format("truetype");font-weight:700;font-display:swap}
+:root{--control:#2f7d4f;--influence:#b8860b;--outside:#6d6d6d;--ink:#2b2b2b;--muted:#6f6a60;--paper:#fbf7ee;--line:#2b2b2b;--red:#c0392b}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg);display:flex;flex-direction:column}
-header{height:52px;padding:0 20px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:center;gap:18px;flex:none}
-header h1{font-size:17px;margin:0;letter-spacing:-.01em}
-.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-left:auto}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.legend .path{border:2px solid var(--ink);background:#fff}
-.legend .pill{border-radius:5px;width:16px}
-.legend .red{width:14px;height:3px;border-radius:2px;background:#c0392b;vertical-align:2px}
+body{margin:0;font-family:"Patrick Hand","Segoe Print","Bradley Hand",cursive;font-size:17px;color:var(--ink);display:flex;flex-direction:column;
+  background:var(--paper);background-image:radial-gradient(#d8d0bf 1px,transparent 1.2px);background-size:24px 24px}
+h1,h2,.hand{font-family:"Caveat","Patrick Hand",cursive;font-weight:700;letter-spacing:.01em}
+/* the hand-drawn border trick: uneven radii make a wobbly rectangle */
+.sk{border:2px solid var(--line);border-radius:255px 15px 225px 15px/15px 225px 15px 255px;background:#fff}
+.sk2{border:2px solid var(--line);border-radius:15px 255px 15px 225px/225px 15px 255px 15px;background:#fff}
+.sk3{border:2px solid var(--line);border-radius:225px 15px 255px 15px/15px 255px 15px 225px;background:#fff}
+button{font:inherit;cursor:pointer;color:var(--ink)}
+button.sk,button.sk2,button.sk3{padding:9px 18px;transition:transform .12s}
+button.sk:hover,button.sk2:hover,button.sk3:hover{transform:rotate(-1.2deg) scale(1.03)}
+button.ink{background:var(--ink);color:#fff}
+button:disabled{opacity:.45;cursor:default;transform:none !important}
+header{height:60px;padding:0 22px;display:flex;align-items:center;gap:18px;flex:none;border-bottom:2px solid var(--line)}
+header h1{font-size:34px;margin:0;position:relative}
+header h1 svg{position:absolute;left:0;bottom:-6px;width:100%;height:10px}
+.legend{display:flex;gap:16px;font-size:15px;color:var(--muted);margin-left:auto;align-items:center}
+.legend i{display:inline-block;width:14px;height:12px;border:2px solid var(--ink);border-radius:60% 40% 55% 45%/50% 60% 40% 50%;margin-right:5px;vertical-align:-2px;background:#fff}
+.legend .red{width:16px;height:0;border:0;border-top:3px solid var(--red);border-radius:0;vertical-align:2px}
 .hidden{display:none !important}
 /* landing */
 #landing{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
-#landing .box{width:min(620px,100%)}
-#landing h2{font-size:28px;margin:0 0 6px;letter-spacing:-.02em}
-#landing p{color:var(--muted);margin:0 0 20px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;cursor:pointer;font-size:14px}
-.chip.on,.chip:hover{border-color:var(--control);color:var(--control)}
-textarea{width:100%;min-height:96px;padding:14px;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px;resize:vertical;background:#fff}
-button.primary{margin-top:12px;background:var(--control);color:#fff;border:0;border-radius:12px;padding:13px 20px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
-button.primary:disabled{opacity:.5;cursor:default}
-.temp{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:12.5px;color:var(--muted)}
-.temp label{white-space:nowrap} .temp label b{color:var(--ink);font-variant-numeric:tabular-nums}
-.temp input{flex:1;accent-color:var(--control)} .temp span{min-width:150px;text-align:right}
-.past{margin-top:28px;font-size:14px}
-.past a{display:block;color:var(--muted);text-decoration:none;padding:4px 0}
+#landing .box{width:min(640px,100%)}
+#landing h2{font-size:44px;margin:0 0 2px;line-height:1.05}
+#landing p{color:var(--muted);margin:0 0 20px;font-size:18px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.chip{padding:7px 14px;font-size:16px;background:#fff}
+.chip.on{background:var(--ink);color:#fff}
+textarea{width:100%;min-height:110px;padding:12px 14px;font:inherit;font-size:19px;color:var(--ink);border:2px solid var(--line);border-radius:15px 255px 15px 225px/225px 15px 255px 15px;resize:vertical;
+  background:#fff repeating-linear-gradient(transparent 0 29px,#e4ddd0 29px 30px) local;line-height:30px}
+.temp{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:15px;color:var(--muted)}
+.temp label{white-space:nowrap} .temp label b{color:var(--ink)}
+.temp input{flex:1;accent-color:var(--control)} .temp span{min-width:170px;text-align:right}
+button.primary{margin-top:14px;font-size:20px;padding:11px 22px}
+.past{margin-top:30px;font-size:16px}
+.past a{display:block;color:var(--muted);text-decoration:none;padding:3px 0}
 .past a:hover{color:var(--control)}
+.totals{display:flex;gap:22px;margin-bottom:14px;color:var(--muted);font-size:15px}
+.totals div{padding:6px 14px;transform:rotate(-1deg)} .totals div:nth-child(2){transform:rotate(.8deg)} .totals div:nth-child(3){transform:rotate(-.5deg)}
+.totals b{display:block;font-family:"Caveat",cursive;font-size:30px;color:var(--ink);line-height:1}
 /* session */
 #session{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
-#map{flex:1;width:100%;min-height:0;background:var(--bg)}
+#map{flex:1;width:100%;min-height:0}
+#map text{font-family:"Patrick Hand","Segoe Print",cursive}
 #map .node{transition:transform .45s cubic-bezier(.2,.8,.2,1)}
-#map .node:hover rect:first-of-type{stroke-width:3}
-#map .lever rect:first-of-type{stroke:#c0392b;stroke-width:3;filter:drop-shadow(0 0 6px rgba(192,57,43,.35))}
-#map .focus rect:first-of-type{animation:pulse 1.4s ease-in-out infinite}
-@keyframes pulse{0%,100%{stroke-width:2;filter:none}50%{stroke-width:5;filter:drop-shadow(0 0 10px rgba(31,122,77,.5))}}
-.dock{flex:none;background:#fff;border-top:1px solid var(--line);padding:14px 20px 16px}
-.dock .inner{max-width:900px;margin:0 auto}
-.q{font-size:19px;font-weight:600;letter-spacing:-.01em;min-height:26px;margin-bottom:10px}
-.q.thinking{color:var(--muted);font-weight:400;font-size:15px}
-form.answer{display:flex;gap:8px}
-form.answer input{flex:1;padding:13px 14px;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px}
-form.answer input:disabled{background:#f3f3f4}
-form.answer button{background:var(--control);color:#fff;border:0;border-radius:12px;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}
-form.answer button:disabled{opacity:.4}
-.tiny{font-size:11.5px;color:var(--muted);margin-top:8px;display:flex;gap:14px;align-items:center}
+#map .lever-ring{stroke-dasharray:4 3}
+#map .focus-ring{animation:breathe 1.5s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.35}50%{opacity:1}}
+.dock{flex:none;padding:12px 20px 16px}
+.dock .inner{max-width:920px;margin:0 auto;padding:14px 20px 16px;box-shadow:3px 4px 0 rgba(43,43,43,.12)}
+.game{display:flex;align-items:center;gap:16px;margin-bottom:8px;font-size:15px;color:var(--muted)}
+.stages{display:flex;gap:14px}
+.stage{white-space:nowrap} .stage::before{content:"☐ ";font-family:system-ui} .stage.on{color:var(--ink);font-weight:700} .stage.on::before{content:"☐ "} .stage.done::before{content:"☑ "} .stage.done{color:var(--control)}
+.xp{margin-left:auto;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.xp .bar{width:140px;height:12px;border:2px solid var(--line);border-radius:255px 15px 225px 15px/15px 225px 15px 255px;overflow:hidden;background:#fff}
+.xp .bar i{display:block;height:100%;background:repeating-linear-gradient(-45deg,var(--control) 0 2px,transparent 2px 6px);transition:width .5s}
+.xp b{font-family:"Caveat",cursive;font-size:22px;color:var(--ink);min-width:60px;text-align:right}
+.q{font-family:"Caveat",cursive;font-size:30px;font-weight:700;line-height:1.1;min-height:34px;margin:2px 0 10px}
+.q.thinking{font-family:"Patrick Hand",cursive;color:var(--muted);font-weight:400;font-size:17px}
+form.answer{display:flex;gap:10px}
+form.answer input{flex:1;padding:10px 14px;font:inherit;font-size:19px;color:var(--ink);border:0;border-bottom:2px solid var(--line);background:transparent;outline:none}
+form.answer input:disabled{color:#aaa}
+form.answer button{padding:8px 20px;font-size:18px}
+.tiny{font-size:14px;color:var(--muted);margin-top:8px;display:flex;gap:14px;align-items:center}
 .tiny a{color:var(--muted);margin-left:auto;cursor:pointer;text-decoration:underline}
-.next{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;border:2px solid var(--control);background:#e6f4ec;padding:12px 16px;border-radius:12px}
-.next b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--control)}
-.next span{font-size:16px;font-weight:600}
-.next a{color:var(--control);font-size:14px;white-space:nowrap}
-.next button{background:var(--control);color:#fff;border:0;border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
-.next button:disabled{background:#9ac7ae;cursor:default}
-/* game strip */
-.game{display:flex;align-items:center;gap:16px;margin-bottom:10px;font-size:12px;color:var(--muted)}
-.stages{display:flex;gap:6px}
-.stage{padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:#fff;white-space:nowrap}
-.stage.on{border-color:var(--control);color:var(--control);font-weight:600}
-.stage.done{background:var(--control);border-color:var(--control);color:#fff}
-.xp{margin-left:auto;display:flex;align-items:center;gap:8px;white-space:nowrap}
-.xp .bar{width:120px;height:6px;border-radius:3px;background:#e9e9ea;overflow:hidden}
-.xp .bar i{display:block;height:100%;background:var(--control);transition:width .5s}
-.xp b{color:var(--ink);font-size:13px;min-width:48px;text-align:right}
-.toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);animation:toast 2.6s forwards;z-index:20}
-@keyframes toast{0%{opacity:0;transform:translate(-50%,-8px)}12%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
-.totals{display:flex;gap:18px;margin-bottom:18px;font-size:13px;color:var(--muted)}
-.totals b{display:block;font-size:20px;color:var(--ink);letter-spacing:-.02em}
-.error{background:#fdecea;color:#7a1f16;padding:10px 12px;border-radius:10px;font-size:14px;white-space:pre-wrap}
-/* node popover */
-#pop{position:fixed;z-index:10;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:12px 14px;width:280px;font-size:13px}
-#pop .t{font-weight:600;margin-bottom:4px}
-#pop .m{color:var(--muted);margin-bottom:10px;font-size:12px}
+/* the quest: a sticky note */
+.next{position:relative;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;background:#fff3a3;padding:16px 20px;transform:rotate(-.8deg);box-shadow:3px 5px 0 rgba(43,43,43,.15);font-size:19px}
+.next::before{content:"";position:absolute;top:-10px;left:50%;width:70px;height:20px;margin-left:-35px;background:rgba(255,255,255,.55);border:1px solid rgba(0,0,0,.08);transform:rotate(-2deg)}
+.next b{font-family:"Caveat",cursive;font-size:20px;color:#6b5600;line-height:1}
+.next span{font-size:21px;line-height:1.25}
+.next a{color:var(--ink);font-size:15px}
+.next button{padding:8px 14px;background:#fff;font-size:17px}
+.error{background:#fdecea;border:2px dashed var(--red);color:#7a1f16;padding:10px 12px;font-size:16px;white-space:pre-wrap}
+/* popover and drawer */
+#pop{position:fixed;z-index:10;padding:12px 14px;width:290px;font-size:16px;box-shadow:3px 4px 0 rgba(43,43,43,.15)}
+#pop .t{font-family:"Caveat",cursive;font-size:22px;font-weight:700;margin-bottom:2px}
+#pop .m{color:var(--muted);margin-bottom:10px;font-size:14px}
 #pop .row{display:flex;gap:6px;flex-wrap:wrap}
-#pop button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;font:inherit;font-size:12px;cursor:pointer}
-#pop button.on{border-color:var(--ink);font-weight:600}
-#pop button.danger{color:#c0392b}
-#pop button:disabled{opacity:.4;cursor:default}
-#pop .note{font-size:11px;color:var(--muted);margin-top:8px}
-/* history drawer */
-#history{position:fixed;top:52px;left:0;bottom:0;width:360px;background:#fff;border-right:1px solid var(--line);padding:16px;overflow:auto;box-shadow:4px 0 16px rgba(0,0,0,.06);z-index:5}
-#history .msg{padding:8px 11px;border-radius:10px;margin-bottom:8px;font-size:13.5px;white-space:pre-wrap}
-#history .agent{background:#f1f5f3}
-#history .you{background:var(--control);color:#fff;margin-left:30px}
-#history .note{background:#fff4d6;font-family:ui-monospace,monospace;font-size:12px}
-#history pre{font-size:11px;color:var(--muted);white-space:pre-wrap}
+#pop button{padding:5px 10px;font-size:15px;background:#fff}
+#pop button.on{background:var(--ink);color:#fff}
+#pop button.danger{color:var(--red)}
+#pop .note{font-size:13px;color:var(--muted);margin-top:8px}
+#history{position:fixed;top:60px;left:0;bottom:0;width:370px;background:var(--paper);border-right:2px solid var(--line);padding:16px;overflow:auto;z-index:5}
+#history .msg{padding:8px 12px;margin-bottom:8px;font-size:16px;white-space:pre-wrap}
+#history .agent{background:#fff;border:2px solid var(--line);border-radius:15px 255px 15px 225px/225px 15px 255px 15px}
+#history .you{background:#e3f1e7;margin-left:30px;border:2px solid var(--control);border-radius:255px 15px 225px 15px/15px 225px 15px 255px}
+#history .note{background:#fff3a3;font-size:14px}
+#history pre{font-size:12px;font-family:ui-monospace,monospace;color:var(--muted);white-space:pre-wrap}
+.toast{position:fixed;top:74px;left:50%;transform:translateX(-50%) rotate(-1.5deg);background:#fff;padding:10px 18px;font-family:"Caveat",cursive;font-size:24px;font-weight:700;box-shadow:3px 4px 0 rgba(43,43,43,.15);animation:toast 2.6s forwards;z-index:20}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,-8px) rotate(-1.5deg)}12%{opacity:1;transform:translate(-50%,0) rotate(-1.5deg)}80%{opacity:1}100%{opacity:0}}
 </style>
 </head>
 <body>
 <header>
-  <h1>LifeGraph</h1>
+  <h1>LifeGraph<svg viewBox="0 0 120 10" preserveAspectRatio="none"><path d="M2 6 C 20 2, 40 9, 60 5 S 100 2, 118 6" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linecap="round"/></svg></h1>
   <div class="legend">
-    <span><i class="path"></i>path</span>
-    <span><i style="background:#e6f4ec;border:2px solid var(--control)"></i>control</span>
-    <span><i style="background:#fff4d6;border:2px solid var(--influence)"></i>influence</span>
-    <span><i style="background:#ececec;border:2px solid var(--outside)"></i>outside</span>
-    <span><i class="pill" style="background:var(--control)"></i>action</span>
+    <span><i style="border-width:2.5px"></i>path</span>
+    <span><i style="background:#e3f1e7;border-color:var(--control)"></i>control</span>
+    <span><i style="background:#fbf0cf;border-color:var(--influence)"></i>influence</span>
+    <span><i style="background:#e9e7e2;border-color:var(--outside)"></i>outside</span>
+    <span><i style="background:repeating-linear-gradient(-45deg,var(--control) 0 1.5px,#e3f1e7 1.5px 5px);border-color:var(--control);border-radius:8px"></i>action</span>
     <span><i class="red"></i>leaves your reach</span>
   </div>
 </header>
@@ -118,14 +126,14 @@ form.answer button:disabled{opacity:.4}
       <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.3">
       <span id="tempHint">steady</span>
     </div>
-    <button class="primary" id="start">Explore my decision graph</button>
+    <button class="primary sk ink" id="start">Explore my decision graph →</button>
     <div class="past" id="past"></div>
   </div>
 </section>
 
 <section id="session" class="hidden">
   <svg id="map" preserveAspectRatio="xMidYMin meet"></svg>
-  <div class="dock"><div class="inner">
+  <div class="dock"><div class="inner sk3">
     <div class="game">
       <div class="stages" id="stages"></div>
       <div class="xp"><span id="xpLabel"></span><div class="bar"><i id="xpBar" style="width:0"></i></div><b id="xp">0 xp</b></div>
@@ -133,36 +141,37 @@ form.answer button:disabled{opacity:.4}
     <div id="live">
       <div class="q" id="question"></div>
       <form class="answer" id="answerForm">
-        <input id="answer" autocomplete="off" placeholder="Your answer" disabled>
-        <button id="send" disabled>Send</button>
+        <input id="answer" autocomplete="off" placeholder="write your answer here…" disabled>
+        <button class="sk ink" id="send" disabled>Send</button>
       </form>
-      <div class="tiny"><span>Click any node to move it, remove it, or explore it. Click the problem to open what's behind it.</span><a id="historyToggle">history</a></div>
+      <div class="tiny"><span>Click any box to move it, remove it, or explore it. Click the cloud to see what's behind the problem.</span><a id="historyToggle">history</a></div>
     </div>
-    <div id="done" class="next hidden"><b>Your quest<br>this week</b><span id="nextMove"></span><span><button id="questDone">I did it · +100</button><br><a id="fullMap" target="_blank">open map</a> &nbsp;·&nbsp; <a href="/">start another</a></span></div>
+    <div id="done" class="next hidden"><b>your quest<br>this week</b><span id="nextMove"></span><span><button class="sk2" id="questDone">I did it ✓ +100</button><br><a id="fullMap" target="_blank">open map</a> &nbsp;·&nbsp; <a href="/">start another</a></span></div>
     <div id="errorBox" class="error hidden"></div>
   </div></div>
 </section>
 
-<div id="pop" class="hidden"></div>
+<div id="pop" class="hidden sk2"></div>
 
 <aside id="history" class="hidden">
   <div id="transcript"></div>
-  <details><summary style="font-size:12px;color:var(--muted)">tool calls</summary><pre id="events"></pre></details>
+  <details><summary style="font-size:14px;color:var(--muted)">tool calls</summary><pre id="events"></pre></details>
 </aside>
 
+<script src="/sketch.js"></script>
 <script src="/tree.js"></script>
 <script>
 const CATEGORIES = ["Career, ambition, or purpose","Relationships or conflict","A difficult decision","Feeling stuck or overwhelmed","Anything else"];
+const SK = ["sk", "sk2", "sk3"];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let sessionId = null, pollTimer = null, lastState = null;
 
-CATEGORIES.forEach(c => {
-  const b = document.createElement("button"); b.className = "chip"; b.textContent = c;
+CATEGORIES.forEach((c, i) => {
+  const b = document.createElement("button"); b.className = "chip " + SK[i % 3]; b.textContent = c;
   b.onclick = () => { document.querySelectorAll(".chip").forEach(x => x.classList.remove("on")); b.classList.add("on"); $("problem").focus(); };
   $("chips").appendChild(b);
 });
-// Temperature: the server's default is shown first; the slider sets it per session. Remembered in this browser.
 const tempHint = t => t < 0.35 ? "steady, reliable tool calls" : t < 0.8 ? "balanced" : t < 1.3 ? "more varied questions and paths" : "wild; may break tool calls";
 function setTemp(t) { $("temperature").value = t; $("tempVal").textContent = Number(t).toFixed(1); $("tempHint").textContent = tempHint(Number(t)); }
 $("temperature").oninput = e => { setTemp(e.target.value); try { localStorage.setItem("lifegraph.temperature", e.target.value); } catch (_) {} };
@@ -186,34 +195,9 @@ $("start").onclick = async () => {
   const t = j.totals;
   if (t && t.sessions) {
     $("totals").classList.remove("hidden");
-    $("totals").innerHTML = `<div><b>${t.points}</b>xp</div><div><b>${t.quests_done}/${t.sessions}</b>quests done</div><div><b>${t.levers}</b>levers found</div>`;
+    $("totals").innerHTML = `<div class="sk"><b>${t.points}</b>xp</div><div class="sk2"><b>${t.quests_done}/${t.sessions}</b>quests done</div><div class="sk3"><b>${t.levers}</b>levers found</div>`;
   }
 })();
-
-// Game layer: stages come from what the agent has built so far, xp from the graph score.
-const STAGES = ["dig", "paths", "what ifs", "your move"];
-let lastPoints = 0, seenLevers = 0;
-function toast(text) { const d = document.createElement("div"); d.className = "toast"; d.textContent = text; document.body.appendChild(d); setTimeout(() => d.remove(), 2700); }
-function renderGame(s) {
-  const g = s.graph; if (!g) return;
-  const sc = g.score || {};
-  const stage = s.status === "done" ? 3 : sc.what_ifs > 0 ? 2 : sc.paths > 0 ? 1 : 0;
-  $("stages").innerHTML = STAGES.map((n, i) => `<span class="stage ${i < stage || s.status === "done" ? "done" : i === stage ? "on" : ""}">${i + 1} · ${n}${i === 0 && stage === 0 && sc.depth ? ` · why ${Math.min(sc.depth, 5)}/5` : ""}</span>`).join("");
-  const pts = sc.points || 0;
-  $("xp").textContent = `${pts} xp`;
-  $("xpBar").style.width = Math.min(100, pts / 3.5) + "%";
-  $("xpLabel").textContent = sc.clarity != null ? `${Math.round(sc.clarity * 100)}% within reach` : "";
-  if (sc.levers > seenLevers) { toast("Lever found · +25"); seenLevers = sc.levers; }
-  else if (pts > lastPoints && lastPoints > 0) { /* quiet increments; the bar moves */ }
-  lastPoints = pts;
-}
-$("questDone").onclick = async () => {
-  $("questDone").disabled = true;
-  const r = await fetch("/api/quest_done", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({session: sessionId})});
-  const j = await r.json();
-  if (r.ok) { $("questDone").textContent = "done ✓"; $("xp").textContent = `${j.score.points} xp`; $("xpBar").style.width = "100%"; toast(`Quest complete · +100 · ${j.totals.points} xp lifetime`); }
-  else $("questDone").disabled = false;
-};
 $("historyToggle").onclick = () => $("history").classList.toggle("hidden");
 
 async function sendAnswer(answer) {
@@ -224,26 +208,47 @@ async function sendAnswer(answer) {
 }
 $("answerForm").onsubmit = e => { e.preventDefault(); const a = $("answer").value.trim(); if (a) sendAnswer(a); };
 
-// Node popover: move between regions, remove a branch, or ask the agent to explore a node.
-// These become /commands, which the agent only receives while it is waiting for an answer.
 function openPop(node, ev) {
   const asking = lastState && lastState.status === "asking";
   const pop = $("pop");
-  const ringBtn = r => `<button data-cmd="/move ${node.id} ${r}" class="${node.ring === r ? "on" : ""}" ${asking && node.ring !== r ? "" : "disabled"}>${r}</button>`;
+  const ringBtn = r => `<button data-cmd="/move ${node.id} ${r}" class="${SK[r.length % 3]} ${node.ring === r ? "on" : ""}" ${asking && node.ring !== r ? "" : "disabled"}>${r}</button>`;
   pop.innerHTML = `<div class="t">${esc(node.text)}</div>
     <div class="m">${node.kind} · ${node.ring || "?"}${node.ring_reason ? " · " + esc(node.ring_reason) : ""}${node.shifts_when ? "<br>moves if: " + esc(node.shifts_when) : ""}</div>
     <div class="row">${node.kind === "action" || node.kind === "option" ? ringBtn("control") + ringBtn("influence") : ringBtn("control") + ringBtn("influence") + ringBtn("outside")}</div>
     <div class="row" style="margin-top:6px">
-      <button data-cmd="/explore ${node.id}" ${asking ? "" : "disabled"}>explore this next</button>
-      ${node.id !== "n0" ? `<button class="danger" data-cmd="/delete ${node.id}" ${asking ? "" : "disabled"}>remove branch</button>` : ""}
+      <button class="sk" data-cmd="/explore ${node.id}" ${asking ? "" : "disabled"}>explore this next</button>
+      ${node.id !== "n0" ? `<button class="sk3 danger" data-cmd="/delete ${node.id}" ${asking ? "" : "disabled"}>remove branch</button>` : ""}
     </div>
     ${asking ? "" : '<div class="note">available while the agent is waiting for your answer</div>'}`;
   pop.classList.remove("hidden");
-  const x = Math.min(ev.clientX + 10, window.innerWidth - 300), y = Math.min(ev.clientY + 10, window.innerHeight - 220);
+  const x = Math.min(ev.clientX + 10, window.innerWidth - 310), y = Math.min(ev.clientY + 10, window.innerHeight - 230);
   pop.style.left = x + "px"; pop.style.top = y + "px";
   pop.querySelectorAll("button[data-cmd]").forEach(b => { b.onclick = () => { pop.classList.add("hidden"); sendAnswer(b.dataset.cmd); }; });
 }
 document.addEventListener("click", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("g.node")) $("pop").classList.add("hidden"); });
+
+const STAGES = ["dig", "paths", "what ifs", "your move"];
+let lastPoints = 0, seenLevers = 0;
+function toast(text) { const d = document.createElement("div"); d.className = "toast sk2"; d.textContent = text; document.body.appendChild(d); setTimeout(() => d.remove(), 2700); }
+function renderGame(s) {
+  const g = s.graph; if (!g) return;
+  const sc = g.score || {};
+  const stage = s.status === "done" ? 3 : sc.what_ifs > 0 ? 2 : sc.paths > 0 ? 1 : 0;
+  $("stages").innerHTML = STAGES.map((n, i) => `<span class="stage ${i < stage || s.status === "done" ? "done" : i === stage ? "on" : ""}">${n}${i === 0 && stage === 0 && sc.depth ? ` (why ${Math.min(sc.depth, 5)}/5)` : ""}</span>`).join("");
+  const pts = sc.points || 0;
+  $("xp").textContent = `${pts} xp`;
+  $("xpBar").style.width = Math.min(100, pts / 3.5) + "%";
+  $("xpLabel").textContent = sc.clarity != null ? `${Math.round(sc.clarity * 100)}% within reach` : "";
+  if (sc.levers > seenLevers) { toast("lever found! +25"); seenLevers = sc.levers; }
+  lastPoints = pts;
+}
+$("questDone").onclick = async () => {
+  $("questDone").disabled = true;
+  const r = await fetch("/api/quest_done", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({session: sessionId})});
+  const j = await r.json();
+  if (r.ok) { $("questDone").textContent = "done ✓"; $("xp").textContent = `${j.score.points} xp`; $("xpBar").style.width = "100%"; toast(`quest complete! +100 · ${j.totals.points} xp lifetime`); }
+  else $("questDone").disabled = false;
+};
 
 async function poll() {
   clearTimeout(pollTimer);
@@ -266,11 +271,17 @@ function render(s) {
   if (s.graph) LifeGraphTree.render($("map"), s.graph, { focusId: s.status === "asking" && lastAsk ? lastAsk.args.node_id : null, onNodeClick: openPop });
   renderGame(s);
   if (s.status === "done") {
-    $("map").setAttribute("preserveAspectRatio", "xMidYMid meet");  // finished tree sits centered, not top-hugging
+    $("map").setAttribute("preserveAspectRatio", "xMidYMid meet");
     $("live").classList.add("hidden"); $("done").classList.remove("hidden");
     $("nextMove").textContent = s.graph.next_move; $("fullMap").href = `/session/${s.id}.html`;
   }
-  if (s.status === "error") { $("live").classList.add("hidden"); $("errorBox").classList.remove("hidden"); $("errorBox").textContent = s.error; }
+  if (s.status === "error") {
+    $("live").classList.add("hidden"); $("errorBox").classList.remove("hidden");
+    let hint = "";
+    if (/auth key|api key|401|403/i.test(s.error)) hint = "\n\nThe model endpoint rejected the key, so no model ran. Restart the server to get a full diagnosis: python -m lifegraph serve --gemini checks the key at startup. New keys: https://aistudio.google.com/apikey (set GEMINI_API_KEY without quotes).";
+    else if (/connection|connect|refused|ECONNREFUSED/i.test(s.error)) hint = "\n\nNothing is listening at the model endpoint. For local use, start Ollama first (ollama serve) and pull the model (ollama pull gemma4:e4b).";
+    $("errorBox").textContent = s.error + hint;
+  }
 }
 </script>
 </body>

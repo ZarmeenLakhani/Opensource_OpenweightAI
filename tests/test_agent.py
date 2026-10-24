@@ -94,7 +94,20 @@ class ToolRunnerTests(unittest.TestCase):
         self.assertIn("depth", r.run("ask", {"node_id": parent, "kind": "why", "question": "why?"})["error"])
         for _ in range(12):
             r.run("ask", {"node_id": "n0", "kind": "why", "question": "why?"})
+            r.run("add_cause", {"parent_id": "n0", "text": "c", "ring": "control", "reason": "", "actionable": False})
         self.assertIn("call finish", r.run("ask", {"node_id": "n0", "kind": "why", "question": "why?"})["error"])
+
+    def test_root_lever_needs_no_separate_action(self):
+        g = Graph("p", session_id="s1")
+        g.set_ring("n0", "control")
+        g.add_cause("n0", "the weather", "outside")  # n0 is now a lever
+        g.add_option("n0", "stay", "control")
+        g.add_option("n0", "go", "control")
+        r = runner_for(g)
+        r.run("ask", {"node_id": "n0", "kind": "what_if", "question": "what if?"})
+        r.run("add_consequence", {"parent_id": "n2", "text": "then", "ring": "control", "reason": ""})
+        self.assertEqual(g.levers(), ["n0"])
+        self.assertTrue(r.run("finish", {"summary": "s", "next_move": "do x", "actions": {}, "accept": {}})["ok"])
 
     def test_finish_guardrails(self):
         g = Graph("p", session_id="s1")
@@ -107,6 +120,7 @@ class ToolRunnerTests(unittest.TestCase):
         self.assertIn("n1", r.run("finish", {**base, "next_move": "do x", "actions": {}})["error"])
         self.assertIn("what_if", r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["error"])
         r.run("ask", {"node_id": "n0", "kind": "what_if", "question": "what if?"})
+        r.run("add_consequence", {"parent_id": "n0", "text": "then", "ring": "control", "reason": ""})
         self.assertIn("two paths", r.run("finish", {**base, "next_move": "do x", "actions": {"n1": "do"}})["error"])
         g.add_option("n0", "stay", "control")
         g.add_option("n0", "leave", "control")
@@ -119,6 +133,27 @@ class ToolRunnerTests(unittest.TestCase):
 
     def test_unknown_tool(self):
         self.assertIn("error", runner_for(Graph("p", session_id="s1")).run("nope", {}))
+
+    def test_every_answer_must_be_recorded_before_moving_on(self):
+        g = Graph("p", session_id="s1")
+        g.set_ring("n0", "control")
+        r = runner_for(g, answers=["because of x"])
+        res = r.run("ask", {"node_id": "n0", "kind": "why", "question": "why?"})
+        self.assertIn("record this answer", res["next"])
+        for blocked in (("ask", {"node_id": "n0", "kind": "why", "question": "and?"}),
+                        ("add_option", {"parent_id": "n0", "text": "stay", "ring": "control", "reason": ""}),
+                        ("finish", {"summary": "s", "next_move": "x", "actions": {}, "accept": {}})):
+            err = r.run(*blocked)["error"]
+            self.assertIn("not on the map yet", err)
+            self.assertIn("because of x", err)
+        r.run("add_cause", {"parent_id": "n0", "text": "x", "ring": "control", "reason": "", "actionable": True})
+        self.assertNotIn("error", r.run("ask", {"node_id": "n1", "kind": "why", "question": "why x?"}))
+        # consequences and actions also count as recording; a /explore (empty answer) leaves nothing pending
+        r.run("add_consequence", {"parent_id": "n1", "text": "y", "ring": "control", "reason": ""})
+        self.assertIsNone(r.pending)
+        r2 = runner_for(g, answers=["/explore n1"])
+        r2.run("ask", {"node_id": "n0", "kind": "why", "question": "why?"})
+        self.assertIsNone(r2.pending)
 
 
 class UserEditTests(unittest.TestCase):
@@ -186,9 +221,11 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(saved["next_move"], graph.next_move)
 
         page = save_html(graph, data_dir).read_text()
-        self.assertIn("Your next move", page)
+        self.assertIn("your quest", page)
+        self.assertIn("two hours this week", page)
         self.assertIn("leaves your reach", page)
         self.assertIn("LifeGraphTree.render", page)  # the tree renderer is inlined, so the file stands alone
+        self.assertIn("window.LifeGraphSketch", page)  # and so is the sketch layer it needs
         self.assertIn('"levers": ["n3"]', page)  # the graph JSON is embedded for it
 
     def test_prose_reply_is_pushed_back_to_tools(self):
@@ -207,6 +244,112 @@ class AgentLoopTests(unittest.TestCase):
         graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp(), temperature=1.1)
         self.assertTrue(graph.finished)
         self.assertEqual(client.last_temperature, 1.1)
+
+
+class RateLimitTests(unittest.TestCase):
+    def test_waits_what_the_server_asks_then_continues(self):
+        from lifegraph import agent as agent_module
+
+        client = FakeClient(JOB_SCRIPT)
+        original = client.chat.completions.create
+        calls = {"n": 0}
+
+        class RateLimitError(Exception):
+            status_code = 429
+
+        def create(**kw):
+            calls["n"] += 1
+            if calls["n"] in (2, 3):  # two limits in a row, then fine
+                raise RateLimitError("Error code: 429 - quota exceeded. Please retry in 13.79s.")
+            return original(**kw)
+
+        client.chat.completions.create = create
+        slept, events = [], []
+        real_sleep = agent_module.time.sleep
+        agent_module.time.sleep = slept.append
+        try:
+            graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp(),
+                              on_event=lambda k, p: events.append((k, p)))
+        finally:
+            agent_module.time.sleep = real_sleep
+        self.assertTrue(graph.finished)
+        self.assertEqual(slept, [14.79, 14.79])  # the server's hint plus a second
+        self.assertEqual([p["attempt"] for k, p in events if k == "retry"], [1, 2])
+
+    def test_gives_up_after_the_retry_budget_and_ignores_other_errors(self):
+        from lifegraph import agent as agent_module
+
+        self.assertIsNone(agent_module._retry_after(ValueError("bad json")))
+        self.assertEqual(agent_module._retry_after(RuntimeError("429 Too Many Requests")), 15.0)
+        self.assertEqual(agent_module._retry_after(RuntimeError("429: retry in 90s")), 60.0)  # capped
+
+        client = FakeClient(JOB_SCRIPT)
+        client.chat.completions.create = lambda **kw: (_ for _ in ()).throw(RuntimeError("Error code: 429 - retry in 1s"))
+        agent_module.time.sleep = lambda s: None
+        try:
+            with self.assertRaises(RuntimeError):
+                run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp())
+        finally:
+            agent_module.time.sleep = __import__("time").sleep
+
+
+class ConnectionRetryTests(unittest.TestCase):
+    def test_retries_dropped_connections_then_gives_up(self):
+        from lifegraph import agent as agent_module
+
+        class APIConnectionError(Exception):
+            pass
+
+        client = FakeClient(JOB_SCRIPT)
+        original = client.chat.completions.create
+        calls = {"n": 0}
+
+        def create(**kw):
+            calls["n"] += 1
+            if calls["n"] == 3:
+                raise APIConnectionError("Connection error.")
+            return original(**kw)
+
+        client.chat.completions.create = create
+        slept = []
+        agent_module.time.sleep = slept.append
+        try:
+            graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp())
+            self.assertTrue(graph.finished)
+            self.assertEqual(slept, [5.0])
+            client2 = FakeClient(JOB_SCRIPT)
+            client2.chat.completions.create = lambda **kw: (_ for _ in ()).throw(APIConnectionError("Connection error."))
+            slept.clear()
+            with self.assertRaises(APIConnectionError):
+                run_agent(client2, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), tempfile.mkdtemp())
+            self.assertEqual(slept, [5.0, 10.0, 20.0])
+        finally:
+            agent_module.time.sleep = __import__("time").sleep
+
+
+class WindowTests(unittest.TestCase):
+    def test_old_turns_are_replaced_by_the_outline(self):
+        from lifegraph.agent import WINDOW, _window
+
+        data_dir = tempfile.mkdtemp()
+        client = FakeClient(JOB_SCRIPT)
+        sent = []
+        original = client.chat.completions.create
+        client.chat.completions.create = lambda **kw: (sent.append(kw["messages"]), original(**kw))[1]
+        graph = run_agent(client, "fake", JOB_PROBLEM, answers_in_order(JOB_ANSWERS), data_dir)
+        self.assertTrue(graph.finished)
+        first, last = sent[0], sent[-1]
+        self.assertEqual(first[0]["role"], "system")
+        self.assertLessEqual(len(last), 2 + 1 + WINDOW)
+        self.assertEqual(last[0]["role"], "system")
+        self.assertIn("Map so far", last[2]["content"])
+        self.assertIn("n3 [influence] I need financial stability", last[2]["content"])
+        self.assertEqual(last[3]["role"], "assistant")  # the window never starts inside a tool-call pair
+        # short conversations are sent whole
+        g = Graph("p", session_id="w")
+        r = ToolRunner(g, ask_user=lambda q: "x", data_dir=data_dir, notify=lambda _: None)
+        msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "p"}, {"role": "assistant", "content": "a"}]
+        self.assertIs(_window(msgs, g, r), msgs)
 
 
 class HistoryTests(unittest.TestCase):
